@@ -15,3 +15,4 @@ export * from "./space-truth-thresholds.js";
 export * from "./p1-floorplan-adjustment.js";
 export * from "./p1-api-boundary.js";
 export * from "./layout-intent.js";
+export * from "./design-kernel.js";

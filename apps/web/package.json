@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@homeai/contracts": "workspace:*",
+    "@homeai/design-kernel": "workspace:*",
     "@homeai/floorplan-parser": "workspace:*",
     "next": "latest",
     "react": "19.2.6",
