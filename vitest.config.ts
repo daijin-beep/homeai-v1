@@ -8,6 +8,8 @@ export default defineConfig({
       "@homeai/design-kernel": fileURLToPath(new URL("./packages/design-kernel/src/index.ts", import.meta.url)),
       "@homeai/geometry": fileURLToPath(new URL("./packages/geometry/src/index.ts", import.meta.url)),
       "@homeai/floorplan-parser": fileURLToPath(new URL("./packages/floorplan-parser/src/index.ts", import.meta.url)),
+      "@homeai/scheme-page": fileURLToPath(new URL("./packages/scheme-page/src/index.ts", import.meta.url)),
+      "@homeai/scheme-page/fixtures": fileURLToPath(new URL("./packages/scheme-page/src/fixtures.ts", import.meta.url)),
       "@homeai/scene": fileURLToPath(new URL("./packages/scene/src/index.ts", import.meta.url))
     }
   },
