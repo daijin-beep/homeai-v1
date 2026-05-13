@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@homeai/contracts": "workspace:*",
     "zod": "latest"
   },
   "devDependencies": {

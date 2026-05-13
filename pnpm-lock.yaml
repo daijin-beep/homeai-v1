@@ -63,6 +63,9 @@ importers:
 
   packages/ads-render:
     dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       zod:
         specifier: latest
         version: 4.4.3
