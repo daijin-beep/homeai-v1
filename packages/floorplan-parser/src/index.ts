@@ -650,6 +650,8 @@ function applyOperation(
       return deleteOpening(draft, requireTarget(operation));
     case "door.direction.change":
       return updateDoorSwing(draft, requireTarget(operation), requireDoorSwing(payload.swing));
+    case "opening.position.change":
+      return updateOpeningPosition(draft, requireTarget(operation), requireNumber(payload.positionOnWall, "positionOnWall"));
     case "door.dimension.change":
       return replaceOpening(draft, requireTarget(operation), (opening) => {
         if (opening.type !== "door") {
@@ -672,6 +674,8 @@ function applyOperation(
       return restoreWallAfterBalconyDelete(draft, requireTarget(operation));
     case "balcony.type.change":
       return setBalconyEnclosureType(draft, requireTarget(operation), requireEnclosureType(payload.enclosureType));
+    case "balcony.move":
+      return moveBalcony(draft, requireTarget(operation), requirePoint(payload.delta, "delta"));
     case "room.type.change":
       return replaceRoom(draft, requireTarget(operation), (room) => ({
         ...room,
@@ -751,10 +755,41 @@ function deleteOpening(draft: FloorplanDraftRevision, openingId: string): Floorp
   });
 }
 
+function updateOpeningPosition(
+  draft: FloorplanDraftRevision,
+  openingId: string,
+  positionOnWall: number
+): FloorplanDraftRevision {
+  if (positionOnWall < 0 || positionOnWall > 1) {
+    throw new Error("opening.position.change requires positionOnWall between 0 and 1.");
+  }
+  return replaceOpening(draft, openingId, (opening) => ({
+    ...opening,
+    positionOnWall,
+    source: "user_modified"
+  }));
+}
+
 function addRoom(draft: FloorplanDraftRevision, room: DraftRoom): FloorplanDraftRevision {
   return FloorplanDraftRevisionSchema.parse({
     ...cloneDraft(draft),
     rooms: [...draft.rooms, P1DraftRoomSchema.parse(room)]
+  });
+}
+
+function moveBalcony(draft: FloorplanDraftRevision, roomId: string, delta: Point2D): FloorplanDraftRevision {
+  return replaceRoom(draft, roomId, (room) => {
+    if (room.roomType !== "balcony") {
+      throw new Error("balcony.move requires a balcony room target.");
+    }
+    return {
+      ...room,
+      polygon: room.polygon.map((point) => ({ x: point.x + delta.x, y: point.y + delta.y })),
+      ...(room.labelPosition === undefined
+        ? {}
+        : { labelPosition: { x: room.labelPosition.x + delta.x, y: room.labelPosition.y + delta.y } }),
+      source: "user_labeled"
+    };
   });
 }
 

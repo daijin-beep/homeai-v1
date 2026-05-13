@@ -35,6 +35,7 @@ import {
   parseCmToMm,
   pointInPolygon,
   pointOnWallAt,
+  positionOnWallFromPoint,
   resizeWallToLengthMm,
   roomCentroid,
   snapPoint,
@@ -73,6 +74,16 @@ type SelectedElement =
 type DragState = {
   wallId: string;
   endpoint: "start" | "end";
+};
+
+type OpeningDragState = {
+  openingId: string;
+  startPoint: Point2D;
+};
+
+type BalconyDragState = {
+  roomId: string;
+  startPoint: Point2D;
 };
 
 type PlaceholderDragState = {
@@ -184,6 +195,8 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
   const [viewTransform, setViewTransform] = useState<ViewTransform>(DEFAULT_VIEW_TRANSFORM);
   const [pendingWallStart, setPendingWallStart] = useState<Point2D | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [openingDragState, setOpeningDragState] = useState<OpeningDragState | null>(null);
+  const [balconyDragState, setBalconyDragState] = useState<BalconyDragState | null>(null);
   const [lengthInputCm, setLengthInputCm] = useState("");
   const [wallThicknessInputCm, setWallThicknessInputCm] = useState("");
   const [floorHeightInputCm, setFloorHeightInputCm] = useState("");
@@ -313,6 +326,8 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
         setSelectedElement(null);
         setSelectedPlaceholderId(null);
         setPendingWallStart(null);
+        setOpeningDragState(null);
+        setBalconyDragState(null);
         setActiveTool("select");
         return;
       }
@@ -614,13 +629,47 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
   }
 
   function handleSvgPointerMove(event: PointerEvent<SVGSVGElement>) {
-    if ((dragState === null && placeholderDragState === null) || currentDraft === null) {
+    if (
+      dragState === null &&
+      placeholderDragState === null &&
+      openingDragState === null &&
+      balconyDragState === null
+    ) {
       return;
     }
     event.preventDefault();
   }
 
   function handleSvgPointerUp(event: PointerEvent<SVGSVGElement>) {
+    if (openingDragState !== null) {
+      const point = canvasPointFromEvent(event);
+      const state = openingDragState;
+      setOpeningDragState(null);
+      if (point !== null && distanceBetween(point, state.startPoint) > 30) {
+        void moveOpeningToPoint(state.openingId, point);
+      }
+      return;
+    }
+    if (balconyDragState !== null) {
+      const point = canvasPointFromEvent(event);
+      const state = balconyDragState;
+      setBalconyDragState(null);
+      if (point !== null) {
+        const delta = {
+          x: Math.round((point.x - state.startPoint.x) / 10) * 10,
+          y: Math.round((point.y - state.startPoint.y) / 10) * 10
+        };
+        if (Math.hypot(delta.x, delta.y) > 30) {
+          void submitOperations([
+            createOperation("balcony.move", "room", {
+              targetId: state.roomId,
+              payload: { delta }
+            })
+          ]);
+        }
+      }
+      return;
+    }
     if (placeholderDragState !== null) {
       const point = canvasPointFromEvent(event);
       const placeholderId = placeholderDragState.placeholderId;
@@ -654,7 +703,7 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     ]);
   }
 
-  function canvasPointFromEvent(event: PointerEvent<SVGSVGElement>): Point2D | null {
+  function canvasPointFromEvent(event: { clientX: number; clientY: number }): Point2D | null {
     const svg = svgRef.current;
     if (svg === null) {
       return null;
@@ -680,12 +729,12 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     await addDoorToWall(selectedWall);
   }
 
-  async function addDoorToWall(wall: DraftWallSegment) {
+  async function addDoorToWall(wall: DraftWallSegment, positionOnWall = 0.5) {
     const opening: DraftDoorOpening = {
       openingId: `door-user-${Date.now()}`,
       type: "door",
       wallId: wall.wallId,
-      positionOnWall: 0.5,
+      positionOnWall,
       widthMm: 800,
       heightMm: 2000,
       swing: "left_in",
@@ -701,19 +750,36 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     await addWindowToWall(selectedWall);
   }
 
-  async function addWindowToWall(wall: DraftWallSegment) {
+  async function addWindowToWall(wall: DraftWallSegment, positionOnWall = 0.5) {
     const opening: DraftWindowOpening = {
       openingId: `window-user-${Date.now()}`,
       type: "window",
       windowKind: "standard",
       wallId: wall.wallId,
-      positionOnWall: 0.5,
+      positionOnWall,
       widthMm: 1200,
       heightMm: 1300,
       sillHeightMm: 900,
       source: "user_created"
     };
     await submitOperations([createOperation("window.add", "opening", { payload: { opening } })]);
+  }
+
+  async function moveOpeningToPoint(openingId: string, point: Point2D) {
+    if (currentDraft === null) {
+      return;
+    }
+    const opening = currentDraft.openings.find((candidate) => candidate.openingId === openingId);
+    const wall = opening === undefined ? undefined : currentDraft.walls.find((candidate) => candidate.wallId === opening.wallId);
+    if (opening === undefined || wall === undefined) {
+      return;
+    }
+    await submitOperations([
+      createOperation("opening.position.change", "opening", {
+        targetId: opening.openingId,
+        payload: { positionOnWall: positionOnWallFromPoint(wall, point) }
+      })
+    ]);
   }
 
   async function addBalconyAt(point: Point2D) {
@@ -1229,26 +1295,52 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
               {currentDraft?.rooms.map((room) => renderRoom(room, selectedElement, setSelectedElement))}
             </g>
             <g data-testid="balcony-layer">
-              {currentDraft?.rooms.filter((room) => room.roomType === "balcony").map((room) => renderBalcony(room, selectedElement, setSelectedElement))}
+              {currentDraft?.rooms.filter((room) => room.roomType === "balcony").map((room) =>
+                renderBalcony(room, selectedElement, (selection, event) => {
+                  setSelectedElement(selection);
+                  const point = canvasPointFromEvent(event);
+                  if (point !== null) {
+                    setBalconyDragState({ roomId: room.roomId, startPoint: point });
+                  }
+                })
+              )}
             </g>
             <g data-testid="wall-layer">
-              {currentDraft?.walls.map((wall) => renderWall(wall, selectedElement, (selection) => {
+              {currentDraft?.walls.map((wall) => renderWall(wall, selectedElement, (selection, event) => {
+                const point = canvasPointFromEvent(event);
+                const positionOnWall = point === null ? 0.5 : positionOnWallFromPoint(wall, point);
                 if (activeTool === "door.add") {
-                  void addDoorToWall(wall);
+                  void addDoorToWall(wall, positionOnWall);
                   return;
                 }
                 if (activeTool === "window.add") {
-                  void addWindowToWall(wall);
+                  void addWindowToWall(wall, positionOnWall);
                   return;
                 }
                 setSelectedElement(selection);
               }))}
             </g>
             <g data-testid="door-layer">
-              {currentDraft?.openings.filter((opening): opening is DraftDoorOpening => opening.type === "door").map((opening) => renderDoor(opening, currentDraft.walls, selectedElement, setSelectedElement))}
+              {currentDraft?.openings.filter((opening): opening is DraftDoorOpening => opening.type === "door").map((opening) =>
+                renderDoor(opening, currentDraft.walls, selectedElement, (selection, event) => {
+                  setSelectedElement(selection);
+                  const point = canvasPointFromEvent(event);
+                  if (point !== null) {
+                    setOpeningDragState({ openingId: opening.openingId, startPoint: point });
+                  }
+                })
+              )}
             </g>
             <g data-testid="window-layer">
-              {currentDraft?.openings.filter((opening): opening is DraftWindowOpening => opening.type === "window").map((opening) => renderWindow(opening, currentDraft.walls, selectedElement, setSelectedElement))}
+              {currentDraft?.openings.filter((opening): opening is DraftWindowOpening => opening.type === "window").map((opening) =>
+                renderWindow(opening, currentDraft.walls, selectedElement, (selection, event) => {
+                  setSelectedElement(selection);
+                  const point = canvasPointFromEvent(event);
+                  if (point !== null) {
+                    setOpeningDragState({ openingId: opening.openingId, startPoint: point });
+                  }
+                })
+              )}
             </g>
             <g data-testid="furniture-placeholder-layer">
               {layoutIntent?.placeholders.map((placeholder) =>
@@ -1685,7 +1777,7 @@ function renderRoom(
 function renderBalcony(
   room: DraftRoom,
   selectedElement: SelectedElement,
-  setSelectedElement: (selection: SelectedElement) => void
+  setSelectedElement: (selection: SelectedElement, event: PointerEvent<SVGPolygonElement>) => void
 ) {
   if (room.roomType !== "balcony") {
     return null;
@@ -1703,7 +1795,7 @@ function renderBalcony(
       opacity={0.7}
       onPointerDown={(event) => {
         event.stopPropagation();
-        setSelectedElement({ type: "balcony", id: room.roomId });
+        setSelectedElement({ type: "balcony", id: room.roomId }, event);
       }}
     />
   );
@@ -1712,7 +1804,7 @@ function renderBalcony(
 function renderWall(
   wall: DraftWallSegment,
   selectedElement: SelectedElement,
-  setSelectedElement: (selection: SelectedElement) => void
+  setSelectedElement: (selection: SelectedElement, event: PointerEvent<SVGLineElement>) => void
 ) {
   const selected = selectedElement?.type === "wall" && selectedElement.id === wall.wallId;
   const center = pointOnWallAt(wall, 0.5);
@@ -1729,7 +1821,7 @@ function renderWall(
         strokeLinecap="round"
         onPointerDown={(event) => {
           event.stopPropagation();
-          setSelectedElement({ type: "wall", id: wall.wallId });
+          setSelectedElement({ type: "wall", id: wall.wallId }, event);
         }}
       />
       <text x={center.x} y={center.y - 160} textAnchor="middle" fontSize={130} fill="#475569" pointerEvents="none">
@@ -1743,7 +1835,7 @@ function renderDoor(
   opening: DraftDoorOpening,
   walls: DraftWallSegment[],
   selectedElement: SelectedElement,
-  setSelectedElement: (selection: SelectedElement) => void
+  setSelectedElement: (selection: SelectedElement, event: PointerEvent<SVGGElement>) => void
 ) {
   const wall = walls.find((candidate) => candidate.wallId === opening.wallId);
   if (wall === undefined) {
@@ -1759,7 +1851,7 @@ function renderDoor(
       data-height-mm={opening.heightMm}
       onPointerDown={(event) => {
         event.stopPropagation();
-        setSelectedElement({ type: "door", id: opening.openingId });
+        setSelectedElement({ type: "door", id: opening.openingId }, event);
       }}
     >
       <circle cx={point.x} cy={point.y} r={150} fill={selected ? "#f97316" : "#fb923c"} stroke="#ffffff" strokeWidth={28} />
@@ -1772,7 +1864,7 @@ function renderWindow(
   opening: DraftWindowOpening,
   walls: DraftWallSegment[],
   selectedElement: SelectedElement,
-  setSelectedElement: (selection: SelectedElement) => void
+  setSelectedElement: (selection: SelectedElement, event: PointerEvent<SVGGElement>) => void
 ) {
   const wall = walls.find((candidate) => candidate.wallId === opening.wallId);
   if (wall === undefined) {
@@ -1787,7 +1879,7 @@ function renderWindow(
       data-testid={`window-${opening.openingId}`}
       onPointerDown={(event) => {
         event.stopPropagation();
-        setSelectedElement({ type: "window", id: opening.openingId });
+        setSelectedElement({ type: "window", id: opening.openingId }, event);
       }}
     >
       <rect
@@ -2030,6 +2122,10 @@ function distancePointToSegment(point: Point2D, start: Point2D, end: Point2D): n
     y: start.y + t * dy
   };
   return Math.hypot(point.x - projected.x, point.y - projected.y);
+}
+
+function distanceBetween(first: Point2D, second: Point2D): number {
+  return Math.hypot(first.x - second.x, first.y - second.y);
 }
 
 function defaultWallThickness(draft: FloorplanDraftRevision): number {

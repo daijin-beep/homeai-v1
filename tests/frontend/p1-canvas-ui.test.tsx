@@ -144,6 +144,39 @@ describe("P1 Canvas normal mode UI", () => {
     expect(await screen.findByTestId("validation-issue-OPENING_ORPHANED")).toHaveTextContent("该门窗未连接到有效墙体");
   });
 
+  it("adds doors and windows at the clicked wall position and drags openings along the wall", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    mockSvgRect();
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    fireEvent.click(screen.getByTestId("tool-door.add"));
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"), { clientX: 880, clientY: 200 });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("door.add"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({
+      opening: {
+        wallId: "wall-simple-east",
+        positionOnWall: 0.15
+      }
+    });
+
+    fireEvent.click(screen.getByTestId("tool-window.add"));
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"), { clientX: 880, clientY: 520 });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("window.add"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({
+      opening: {
+        wallId: "wall-simple-east",
+        positionOnWall: 0.71
+      }
+    });
+
+    fireEvent.pointerDown(screen.getByTestId("door-door-simple-entry"), { clientX: 500, clientY: 670 });
+    fireEvent.pointerUp(screen.getByTestId("p1-canvas-stage"), { clientX: 800, clientY: 670 });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("opening.position.change"));
+    expect(lastOperation(scenario)?.targetId).toBe("door-simple-entry");
+    expect(lastOperation(scenario)?.payload).toMatchObject({ positionOnWall: 0.104 });
+  });
+
   it("window add, delete, bay projection, bay topology preservation, and floor-to-ceiling switch work through API", async () => {
     const scenario = mockP1Fetch(homeWithBayWindow);
     const initialWalls = JSON.stringify(homeWithBayWindow.walls);
@@ -192,6 +225,21 @@ describe("P1 Canvas normal mode UI", () => {
     fireEvent.pointerDown(screen.getByTestId("p1-canvas-stage"), { clientX: 500, clientY: 400 });
     expect(await screen.findByTestId("validation-issue-BALCONY_DETACHED")).toHaveTextContent("该阳台未连接到主体户型");
     expect(screen.getByTestId("room-label-room-bal-living")).toBeInTheDocument();
+  });
+
+  it("allows a balcony to be moved after placement without mutating wall topology", async () => {
+    const scenario = mockP1Fetch(homeWithBalcony);
+    mockSvgRect();
+    const initialWalls = JSON.stringify(scenario.draft.walls);
+    render(<P1FloorplanEditor homeId={homeWithBalcony.homeId} />);
+    await screen.findByTestId("balcony-room-bal-balcony");
+
+    fireEvent.pointerDown(screen.getByTestId("balcony-room-bal-balcony"), { clientX: 260, clientY: 260 });
+    fireEvent.pointerUp(screen.getByTestId("p1-canvas-stage"), { clientX: 320, clientY: 300 });
+
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("balcony.move"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({ delta: { x: 410, y: 350 } });
+    expect(JSON.stringify(scenario.draft.walls)).toBe(initialWalls);
   });
 
   it("room selection and type editing update labels without changing geometry", async () => {

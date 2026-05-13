@@ -181,6 +181,17 @@ export function pointOnWallAt(wall: Pick<DraftWallSegment, "start" | "end">, pos
   };
 }
 
+export function positionOnWallFromPoint(wall: Pick<DraftWallSegment, "start" | "end">, point: Point2D): number {
+  const dx = wall.end.x - wall.start.x;
+  const dy = wall.end.y - wall.start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    return 0;
+  }
+  const t = ((point.x - wall.start.x) * dx + (point.y - wall.start.y) * dy) / lengthSquared;
+  return Math.max(0, Math.min(1, t));
+}
+
 export function roomCentroid(room: DraftRoom): Point2D {
   const openPoints = room.polygon.slice(0, -1);
   if (openPoints.length === 0) {

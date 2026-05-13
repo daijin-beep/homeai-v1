@@ -60,6 +60,8 @@ export function eventTypeForOperation(operationType: FloorplanEditOperation["ope
       return "p1_door_deleted";
     case "door.direction.change":
       return "p1_door_direction_changed";
+    case "opening.position.change":
+      return undefined;
     case "window.add":
       return "p1_window_added";
     case "window.delete":
@@ -72,6 +74,8 @@ export function eventTypeForOperation(operationType: FloorplanEditOperation["ope
       return "p1_balcony_deleted";
     case "balcony.type.change":
       return "p1_balcony_type_changed";
+    case "balcony.move":
+      return undefined;
     case "room.type.change":
       return "p1_room_type_changed";
     case "wall.thickness.change":

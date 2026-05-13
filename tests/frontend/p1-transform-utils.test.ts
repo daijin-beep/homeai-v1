@@ -6,6 +6,7 @@ import {
   convertArcLikeInputToPolyline,
   formatMmAsCm,
   parseCmToMm,
+  positionOnWallFromPoint,
   screenPxToWorldMm,
   worldMmToScreenPx,
   type ViewTransform
@@ -48,6 +49,14 @@ describe("P1 canvas coordinate utilities", () => {
     expect(formatMmAsCm(1235)).toBe("123.5");
     expect(parseCmToMm("123.5")).toBe(1235);
     expect(parseCmToMm("123,5")).toBe(1235);
+  });
+
+  it("computes clicked position along a wall and clamps to segment bounds", () => {
+    const wall = { start: { x: 5000, y: 0 }, end: { x: 5000, y: 4000 } };
+
+    expect(positionOnWallFromPoint(wall, { x: 5200, y: 1000 })).toBe(0.25);
+    expect(positionOnWallFromPoint(wall, { x: 5200, y: -500 })).toBe(0);
+    expect(positionOnWallFromPoint(wall, { x: 5200, y: 4500 })).toBe(1);
   });
 
   it("converts arc-like input to polyline points without curve metadata", () => {
