@@ -13,3 +13,4 @@ export * from "./lead-event.js";
 export * from "./room-classification.js";
 export * from "./space-truth-thresholds.js";
 export * from "./p1-floorplan-adjustment.js";
+export * from "./p1-api-boundary.js";

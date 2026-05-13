@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@homeai/contracts": "workspace:*",
+    "@homeai/floorplan-parser": "workspace:*",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

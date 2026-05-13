@@ -31,8 +31,17 @@ import {
   polygonizeClosedFaces
 } from "@homeai/geometry";
 import { createSceneContractV02 } from "@homeai/scene";
+import {
+  createDraftFromCanonicalRevisionData,
+  createInMemoryP1Repositories,
+  type P1RepositorySet
+} from "./repositories.js";
 
 export { computeGeometryHash };
+export * from "./api.js";
+export * from "./events.js";
+export * from "./invalidation.js";
+export * from "./repositories.js";
 
 export const P1_VALUE_BOUNDS = {
   wallThicknessMm: { min: 50, max: 600 },
@@ -44,13 +53,7 @@ export const P1_VALUE_BOUNDS = {
   bayProjectionDepthMm: { min: 100, max: 1500 }
 } as const;
 
-export type P1PersistenceStore = {
-  drafts: Map<string, FloorplanDraftRevision>;
-  canonicalRevisions: Map<string, CanonicalFloorplanRevision>;
-  latestCanonicalRevisionByHome: Map<string, string>;
-  sceneContracts: Map<string, P1SceneContractV02>;
-  activeSceneContractByHome: Map<string, string>;
-};
+export type P1PersistenceStore = P1RepositorySet;
 
 export type ConfirmFloorplanResult =
   | {
@@ -73,13 +76,7 @@ export type OpeningDefaults = {
 };
 
 export function createP1PersistenceStore(): P1PersistenceStore {
-  return {
-    drafts: new Map(),
-    canonicalRevisions: new Map(),
-    latestCanonicalRevisionByHome: new Map(),
-    sceneContracts: new Map(),
-    activeSceneContractByHome: new Map()
-  };
+  return createInMemoryP1Repositories();
 }
 
 export function createDraftFromParsedFloorplan(
@@ -106,48 +103,15 @@ export function createDraftFromCanonicalRevision(
   options: { draftRevisionId: string; createdAt: string; updatedAt?: string } ,
   store?: P1PersistenceStore
 ): FloorplanDraftRevision {
-  const canonical = CanonicalFloorplanRevisionSchema.parse(canonicalRevision);
-  const draft = FloorplanDraftRevisionSchema.parse({
-    draftRevisionId: options.draftRevisionId,
-    homeId: canonical.homeId,
-    baseCanonicalRevisionId: canonical.canonicalRevisionId,
-    source: "reentry_edit",
-    unit: "mm",
-    walls: canonical.walls.map((wall) => ({
-      ...wall,
-      start: clonePoint(wall.start),
-      end: clonePoint(wall.end),
-      source: "fixture"
-    })),
-    openings: canonical.openings.map((opening) => ({ ...opening, source: "fixture" })),
-    rooms: canonical.rooms.map((room) => ({
-      ...room,
-      polygon: room.polygon.map(clonePoint),
-      ...(room.labelPosition === undefined ? {} : { labelPosition: clonePoint(room.labelPosition) }),
-      ...(room.roomType === "balcony" ? { balconyMeta: cloneBalconyMeta(room.balconyMeta) } : {}),
-      source: "boundary_recomputed"
-    })),
-    globalParams: {
-      ...canonical.globalParams,
-      scale: {
-        ...canonical.globalParams.scale,
-        confirmed: true
-      }
-    },
-    operationLog: [],
-    validation: undefined,
-    createdAt: options.createdAt,
-    updatedAt: options.updatedAt ?? options.createdAt
-  });
-  return createNewDraftRevision(draft, store);
+  const draft = createDraftFromCanonicalRevisionData(canonicalRevision, options);
+  return store === undefined ? draft : store.drafts.createDraft(draft);
 }
 
 export function getDraftRevision(
   draftRevisionId: string,
   store: P1PersistenceStore
 ): FloorplanDraftRevision | undefined {
-  const draft = store.drafts.get(draftRevisionId);
-  return draft === undefined ? undefined : cloneDraft(draft);
+  return store.drafts.getDraftById(draftRevisionId);
 }
 
 export function createNewDraftRevision(
@@ -155,8 +119,7 @@ export function createNewDraftRevision(
   store?: P1PersistenceStore
 ): FloorplanDraftRevision {
   const parsed = FloorplanDraftRevisionSchema.parse(cloneDraft(draft));
-  store?.drafts.set(parsed.draftRevisionId, cloneDraft(parsed));
-  return parsed;
+  return store === undefined ? parsed : store.drafts.createDraft(parsed);
 }
 
 export function markDraftDirty(
@@ -189,7 +152,7 @@ export function applyFloorplanOperations(
     validation: undefined,
     updatedAt: options.updatedAt ?? applied[applied.length - 1]?.createdAt ?? draft.updatedAt
   });
-  options.store?.drafts.set(updated.draftRevisionId, cloneDraft(updated));
+  options.store?.drafts.updateDraft(updated);
   return updated;
 }
 
@@ -210,13 +173,9 @@ export function createReentryDraftForHome(
   options: { draftRevisionId: string; createdAt: string },
   store: P1PersistenceStore
 ): FloorplanDraftRevision {
-  const canonicalId = store.latestCanonicalRevisionByHome.get(homeId);
-  if (canonicalId === undefined) {
-    throw new Error("No confirmed canonical revision exists for P1 re-entry.");
-  }
-  const canonical = store.canonicalRevisions.get(canonicalId);
+  const canonical = store.canonical.getActiveCanonicalRevisionForHome(homeId);
   if (canonical === undefined) {
-    throw new Error("Latest canonical revision is missing from store.");
+    throw new Error("No confirmed canonical revision exists for P1 re-entry.");
   }
   return createDraftFromCanonicalRevision(canonical, options, store);
 }
@@ -615,9 +574,7 @@ export function persistCanonicalRevision(
   store?: P1PersistenceStore
 ): CanonicalFloorplanRevision {
   const parsed = CanonicalFloorplanRevisionSchema.parse(canonicalRevision);
-  store?.canonicalRevisions.set(parsed.canonicalRevisionId, parsed);
-  store?.latestCanonicalRevisionByHome.set(parsed.homeId, parsed.canonicalRevisionId);
-  return parsed;
+  return store === undefined ? parsed : store.canonical.createCanonicalRevision(parsed);
 }
 
 export function buildSceneContractFromCanonicalRevision(
@@ -643,20 +600,14 @@ export function persistSceneContract(
 ): P1SceneContractV02 {
   const parsed = P1SceneContractV02Schema.parse(sceneContract);
   enforceReadonlySceneContract(parsed);
-  store.sceneContracts.set(parsed.sceneContractId, parsed);
-  store.activeSceneContractByHome.set(parsed.homeId, parsed.sceneContractId);
-  return parsed;
+  return store.sceneContracts.createSceneContract(parsed);
 }
 
 export function getActiveSceneContractForHome(
   homeId: string,
   store: P1PersistenceStore
 ): P1SceneContractV02 | undefined {
-  const sceneId = store.activeSceneContractByHome.get(homeId);
-  if (sceneId === undefined) {
-    return undefined;
-  }
-  return store.sceneContracts.get(sceneId);
+  return store.sceneContracts.getActiveSceneContractForHome(homeId);
 }
 
 export function enforceReadonlySceneContract(sceneContract: P1SceneContractV02): P1SceneContractV02 {

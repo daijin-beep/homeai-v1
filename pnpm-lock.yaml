@@ -23,6 +23,9 @@ importers:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@homeai/floorplan-parser':
+        specifier: workspace:*
+        version: link:../../packages/floorplan-parser
       next:
         specifier: latest
         version: 16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
