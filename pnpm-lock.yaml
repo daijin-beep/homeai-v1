@@ -41,6 +41,9 @@ importers:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@homeai/design-kernel':
+        specifier: workspace:*
+        version: link:../../packages/design-kernel
       '@homeai/floorplan-parser':
         specifier: workspace:*
         version: link:../../packages/floorplan-parser
@@ -79,6 +82,16 @@ importers:
       zod-to-json-schema:
         specifier: latest
         version: 3.25.2(zod@4.4.2)
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/design-kernel:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       typescript:
         specifier: latest
