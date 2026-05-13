@@ -1,0 +1,155 @@
+{
+  "id": "draft-one-bedroom",
+  "projectId": "project-fixture-one",
+  "parseJobId": "parse-one-bedroom",
+  "unit": "mm",
+  "scale": {
+    "source": "provider_estimated",
+    "mmPerPixel": 20,
+    "confidence": 0.88
+  },
+  "rooms": [
+    {
+      "id": "room-one-living-dining",
+      "type": "living_dining",
+      "label": "Living Dining",
+      "polygon": [
+        { "x": 0, "y": 0 },
+        { "x": 5200, "y": 0 },
+        { "x": 5200, "y": 4200 },
+        { "x": 0, "y": 4200 },
+        { "x": 0, "y": 0 }
+      ],
+      "areaMm2": 21840000,
+      "confidence": 0.9,
+      "userConfirmed": false
+    },
+    {
+      "id": "room-one-bedroom",
+      "type": "bedroom",
+      "label": "Bedroom",
+      "polygon": [
+        { "x": 5200, "y": 0 },
+        { "x": 9000, "y": 0 },
+        { "x": 9000, "y": 3600 },
+        { "x": 5200, "y": 3600 },
+        { "x": 5200, "y": 0 }
+      ],
+      "areaMm2": 13680000,
+      "confidence": 0.86,
+      "userConfirmed": false
+    },
+    {
+      "id": "room-one-kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "polygon": [
+        { "x": 0, "y": 4200 },
+        { "x": 3000, "y": 4200 },
+        { "x": 3000, "y": 6500 },
+        { "x": 0, "y": 6500 },
+        { "x": 0, "y": 4200 }
+      ],
+      "areaMm2": 6900000,
+      "confidence": 0.84,
+      "userConfirmed": false
+    },
+    {
+      "id": "room-one-bathroom",
+      "type": "bathroom",
+      "label": "Bathroom",
+      "polygon": [
+        { "x": 3000, "y": 4200 },
+        { "x": 5200, "y": 4200 },
+        { "x": 5200, "y": 6500 },
+        { "x": 3000, "y": 6500 },
+        { "x": 3000, "y": 4200 }
+      ],
+      "areaMm2": 5060000,
+      "confidence": 0.83,
+      "userConfirmed": false
+    },
+    {
+      "id": "room-one-entry",
+      "type": "entry",
+      "label": "Entry",
+      "polygon": [
+        { "x": 5200, "y": 3600 },
+        { "x": 9000, "y": 3600 },
+        { "x": 9000, "y": 6500 },
+        { "x": 5200, "y": 6500 },
+        { "x": 5200, "y": 3600 }
+      ],
+      "areaMm2": 11020000,
+      "confidence": 0.82,
+      "userConfirmed": false
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-one-outer-north",
+      "kind": "structural",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 9000, "y": 0 },
+      "thicknessMm": 200,
+      "roomIds": ["room-one-living-dining", "room-one-bedroom"],
+      "confidence": 0.92,
+      "userConfirmed": false
+    },
+    {
+      "id": "wall-one-outer-south",
+      "kind": "structural",
+      "start": { "x": 0, "y": 6500 },
+      "end": { "x": 9000, "y": 6500 },
+      "thicknessMm": 200,
+      "roomIds": ["room-one-kitchen", "room-one-bathroom", "room-one-entry"],
+      "confidence": 0.91,
+      "userConfirmed": false
+    },
+    {
+      "id": "wall-one-partition-mid",
+      "kind": "partition",
+      "start": { "x": 5200, "y": 0 },
+      "end": { "x": 5200, "y": 6500 },
+      "thicknessMm": 120,
+      "roomIds": ["room-one-living-dining", "room-one-bedroom", "room-one-entry"],
+      "confidence": 0.86,
+      "userConfirmed": false
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening-one-entry-door",
+      "type": "door",
+      "wallId": "wall-one-outer-south",
+      "start": { "x": 7000, "y": 6500 },
+      "end": { "x": 7900, "y": 6500 },
+      "widthMm": 900,
+      "swing": "unknown",
+      "confidence": 0.79,
+      "userConfirmed": false
+    },
+    {
+      "id": "opening-one-window-living",
+      "type": "window",
+      "wallId": "wall-one-outer-north",
+      "start": { "x": 1400, "y": 0 },
+      "end": { "x": 3200, "y": 0 },
+      "widthMm": 1800,
+      "sillHeightMm": 900,
+      "heightMm": 1300,
+      "confidence": 0.87,
+      "userConfirmed": false
+    }
+  ],
+  "confidence": 0.86,
+  "warnings": [
+    {
+      "code": "OPENING_UNCONFIRMED",
+      "message": "Entry door swing is unknown.",
+      "blocking": false
+    }
+  ],
+  "createdAt": "2026-05-04T00:00:00.000Z",
+  "updatedAt": "2026-05-04T00:00:00.000Z"
+}

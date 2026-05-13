@@ -1,0 +1,16 @@
+{
+  "fixtureId": "fixture_three_bedroom_balcony",
+  "provider": "mock_floorplan",
+  "version": 1,
+  "rooms": [
+    "living_dining",
+    "master_bedroom",
+    "children_room",
+    "study",
+    "kitchen",
+    "bathroom",
+    "balcony",
+    "corridor"
+  ],
+  "checksum": "mock-raw-three-bedroom-balcony-v1"
+}

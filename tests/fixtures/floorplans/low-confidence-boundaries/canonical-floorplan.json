@@ -1,0 +1,98 @@
+{
+  "id": "canonical-low-confidence-boundaries",
+  "projectId": "project-fixture-low-confidence",
+  "draftFloorplanId": "draft-low-confidence-boundaries",
+  "version": 1,
+  "unit": "mm",
+  "scale": {
+    "source": "user_confirmed",
+    "mmPerPixel": 22,
+    "confidence": 1
+  },
+  "rooms": [
+    {
+      "id": "room-low-living",
+      "type": "living",
+      "label": "Living",
+      "polygon": [
+        { "x": 0, "y": 0 },
+        { "x": 5200, "y": 0 },
+        { "x": 5200, "y": 3600 },
+        { "x": 0, "y": 3600 },
+        { "x": 0, "y": 0 }
+      ],
+      "areaMm2": 18720000,
+      "confidence": 0.82,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-low-bedroom",
+      "type": "bedroom",
+      "label": "Bedroom",
+      "polygon": [
+        { "x": 5200, "y": 0 },
+        { "x": 9000, "y": 0 },
+        { "x": 9000, "y": 3600 },
+        { "x": 5200, "y": 3600 },
+        { "x": 5200, "y": 0 }
+      ],
+      "areaMm2": 13680000,
+      "confidence": 0.81,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-low-kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "polygon": [
+        { "x": 0, "y": 3600 },
+        { "x": 4300, "y": 3600 },
+        { "x": 4300, "y": 6200 },
+        { "x": 0, "y": 6200 },
+        { "x": 0, "y": 3600 }
+      ],
+      "areaMm2": 11180000,
+      "confidence": 0.8,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-low-bathroom",
+      "type": "bathroom",
+      "label": "Bathroom",
+      "polygon": [
+        { "x": 4300, "y": 3600 },
+        { "x": 9000, "y": 3600 },
+        { "x": 9000, "y": 6200 },
+        { "x": 4300, "y": 6200 },
+        { "x": 4300, "y": 3600 }
+      ],
+      "areaMm2": 12220000,
+      "confidence": 0.8,
+      "userConfirmed": true
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-low-north",
+      "kind": "structural",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 9000, "y": 0 },
+      "thicknessMm": 200,
+      "roomIds": ["room-low-living", "room-low-bedroom"],
+      "confidence": 0.82,
+      "userConfirmed": true
+    }
+  ],
+  "openings": [],
+  "verifier": {
+    "spaceTruthScore": 0.8,
+    "topologyValid": true,
+    "scaleConfirmed": true,
+    "blockingErrorCodes": [],
+    "warningCodes": ["LOW_CONFIDENCE_ROOM_BOUNDARY"]
+  },
+  "confirmedByUser": true,
+  "confirmedAt": "2026-05-04T00:13:00.000Z",
+  "createdAt": "2026-05-04T00:00:00.000Z",
+  "updatedAt": "2026-05-04T00:13:00.000Z"
+}

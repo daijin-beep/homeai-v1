@@ -1,0 +1,8 @@
+{
+  "code": "PARSE_PROVIDER_MALFORMED_OUTPUT",
+  "module": "parse",
+  "severity": "error",
+  "blocking": true,
+  "userFixable": false,
+  "defaultMessage": "Floorplan provider returned malformed output."
+}

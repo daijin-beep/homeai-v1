@@ -1,0 +1,7 @@
+{
+  "fixtureId": "fixture_one_bedroom",
+  "provider": "mock_floorplan",
+  "version": 1,
+  "rooms": ["living_dining", "bedroom", "kitchen", "bathroom", "entry"],
+  "checksum": "mock-raw-one-bedroom-v1"
+}

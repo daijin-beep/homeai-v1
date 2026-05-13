@@ -1,0 +1,157 @@
+{
+  "id": "canonical-one-bedroom",
+  "projectId": "project-fixture-one",
+  "draftFloorplanId": "draft-one-bedroom",
+  "version": 1,
+  "unit": "mm",
+  "scale": {
+    "source": "user_confirmed",
+    "mmPerPixel": 20,
+    "confidence": 1
+  },
+  "rooms": [
+    {
+      "id": "room-one-living-dining",
+      "type": "living_dining",
+      "label": "Living Dining",
+      "polygon": [
+        { "x": 0, "y": 0 },
+        { "x": 5200, "y": 0 },
+        { "x": 5200, "y": 4200 },
+        { "x": 0, "y": 4200 },
+        { "x": 0, "y": 0 }
+      ],
+      "areaMm2": 21840000,
+      "confidence": 0.93,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-one-bedroom",
+      "type": "bedroom",
+      "label": "Bedroom",
+      "polygon": [
+        { "x": 5200, "y": 0 },
+        { "x": 9000, "y": 0 },
+        { "x": 9000, "y": 3600 },
+        { "x": 5200, "y": 3600 },
+        { "x": 5200, "y": 0 }
+      ],
+      "areaMm2": 13680000,
+      "confidence": 0.9,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-one-kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "polygon": [
+        { "x": 0, "y": 4200 },
+        { "x": 3000, "y": 4200 },
+        { "x": 3000, "y": 6500 },
+        { "x": 0, "y": 6500 },
+        { "x": 0, "y": 4200 }
+      ],
+      "areaMm2": 6900000,
+      "confidence": 0.89,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-one-bathroom",
+      "type": "bathroom",
+      "label": "Bathroom",
+      "polygon": [
+        { "x": 3000, "y": 4200 },
+        { "x": 5200, "y": 4200 },
+        { "x": 5200, "y": 6500 },
+        { "x": 3000, "y": 6500 },
+        { "x": 3000, "y": 4200 }
+      ],
+      "areaMm2": 5060000,
+      "confidence": 0.88,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-one-entry",
+      "type": "entry",
+      "label": "Entry",
+      "polygon": [
+        { "x": 5200, "y": 3600 },
+        { "x": 9000, "y": 3600 },
+        { "x": 9000, "y": 6500 },
+        { "x": 5200, "y": 6500 },
+        { "x": 5200, "y": 3600 }
+      ],
+      "areaMm2": 11020000,
+      "confidence": 0.86,
+      "userConfirmed": true
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-one-outer-north",
+      "kind": "structural",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 9000, "y": 0 },
+      "thicknessMm": 200,
+      "roomIds": ["room-one-living-dining", "room-one-bedroom"],
+      "confidence": 0.94,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-one-outer-south",
+      "kind": "structural",
+      "start": { "x": 0, "y": 6500 },
+      "end": { "x": 9000, "y": 6500 },
+      "thicknessMm": 200,
+      "roomIds": ["room-one-kitchen", "room-one-bathroom", "room-one-entry"],
+      "confidence": 0.93,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-one-partition-mid",
+      "kind": "partition",
+      "start": { "x": 5200, "y": 0 },
+      "end": { "x": 5200, "y": 6500 },
+      "thicknessMm": 120,
+      "roomIds": ["room-one-living-dining", "room-one-bedroom", "room-one-entry"],
+      "confidence": 0.9,
+      "userConfirmed": true
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening-one-entry-door",
+      "type": "door",
+      "wallId": "wall-one-outer-south",
+      "start": { "x": 7000, "y": 6500 },
+      "end": { "x": 7900, "y": 6500 },
+      "widthMm": 900,
+      "swing": "unknown",
+      "confidence": 0.82,
+      "userConfirmed": true
+    },
+    {
+      "id": "opening-one-window-living",
+      "type": "window",
+      "wallId": "wall-one-outer-north",
+      "start": { "x": 1400, "y": 0 },
+      "end": { "x": 3200, "y": 0 },
+      "widthMm": 1800,
+      "sillHeightMm": 900,
+      "heightMm": 1300,
+      "confidence": 0.89,
+      "userConfirmed": true
+    }
+  ],
+  "verifier": {
+    "spaceTruthScore": 0.88,
+    "topologyValid": true,
+    "scaleConfirmed": true,
+    "blockingErrorCodes": [],
+    "warningCodes": ["OPENING_UNCONFIRMED"]
+  },
+  "confirmedByUser": true,
+  "confirmedAt": "2026-05-04T00:10:00.000Z",
+  "createdAt": "2026-05-04T00:00:00.000Z",
+  "updatedAt": "2026-05-04T00:10:00.000Z"
+}

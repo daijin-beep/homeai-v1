@@ -1,0 +1,9 @@
+{
+  "fixtureId": "fixture_malformed_provider_output",
+  "provider": "mock_floorplan",
+  "id": "malformed-draft",
+  "rooms": "not-an-array",
+  "scale": {
+    "source": "provider_estimated"
+  }
+}

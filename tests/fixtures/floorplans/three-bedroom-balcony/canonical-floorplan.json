@@ -1,0 +1,191 @@
+{
+  "id": "canonical-three-bedroom-balcony",
+  "projectId": "project-fixture-three",
+  "draftFloorplanId": "draft-three-bedroom-balcony",
+  "version": 1,
+  "unit": "mm",
+  "scale": {
+    "source": "user_confirmed",
+    "mmPerPixel": 30,
+    "confidence": 1
+  },
+  "rooms": [
+    {
+      "id": "room-three-living-dining",
+      "type": "living_dining",
+      "label": "Living Dining",
+      "polygon": [
+        { "x": 0, "y": 0 },
+        { "x": 6800, "y": 0 },
+        { "x": 6800, "y": 4600 },
+        { "x": 0, "y": 4600 },
+        { "x": 0, "y": 0 }
+      ],
+      "areaMm2": 31280000,
+      "confidence": 0.89,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-master-bedroom",
+      "type": "master_bedroom",
+      "label": "Master Bedroom",
+      "polygon": [
+        { "x": 6800, "y": 0 },
+        { "x": 11200, "y": 0 },
+        { "x": 11200, "y": 4200 },
+        { "x": 6800, "y": 4200 },
+        { "x": 6800, "y": 0 }
+      ],
+      "areaMm2": 18480000,
+      "confidence": 0.88,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-children",
+      "type": "children_room",
+      "label": "Children Room",
+      "polygon": [
+        { "x": 6800, "y": 4200 },
+        { "x": 11200, "y": 4200 },
+        { "x": 11200, "y": 8000 },
+        { "x": 6800, "y": 8000 },
+        { "x": 6800, "y": 4200 }
+      ],
+      "areaMm2": 16720000,
+      "confidence": 0.86,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-study",
+      "type": "study",
+      "label": "Study",
+      "polygon": [
+        { "x": 0, "y": 4600 },
+        { "x": 3200, "y": 4600 },
+        { "x": 3200, "y": 8000 },
+        { "x": 0, "y": 8000 },
+        { "x": 0, "y": 4600 }
+      ],
+      "areaMm2": 10880000,
+      "confidence": 0.85,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "polygon": [
+        { "x": 3200, "y": 4600 },
+        { "x": 5200, "y": 4600 },
+        { "x": 5200, "y": 8000 },
+        { "x": 3200, "y": 8000 },
+        { "x": 3200, "y": 4600 }
+      ],
+      "areaMm2": 6800000,
+      "confidence": 0.84,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-bathroom",
+      "type": "bathroom",
+      "label": "Bathroom",
+      "polygon": [
+        { "x": 5200, "y": 4600 },
+        { "x": 6800, "y": 4600 },
+        { "x": 6800, "y": 8000 },
+        { "x": 5200, "y": 8000 },
+        { "x": 5200, "y": 4600 }
+      ],
+      "areaMm2": 5440000,
+      "confidence": 0.83,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-balcony",
+      "type": "balcony",
+      "label": "Balcony",
+      "polygon": [
+        { "x": 0, "y": -1600 },
+        { "x": 6800, "y": -1600 },
+        { "x": 6800, "y": 0 },
+        { "x": 0, "y": 0 },
+        { "x": 0, "y": -1600 }
+      ],
+      "areaMm2": 10880000,
+      "confidence": 0.82,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-three-corridor",
+      "type": "corridor",
+      "label": "Corridor",
+      "polygon": [
+        { "x": 6400, "y": 4200 },
+        { "x": 6800, "y": 4200 },
+        { "x": 6800, "y": 8000 },
+        { "x": 6400, "y": 8000 },
+        { "x": 6400, "y": 4200 }
+      ],
+      "areaMm2": 1520000,
+      "confidence": 0.82,
+      "userConfirmed": true
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-three-north",
+      "kind": "structural",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 11200, "y": 0 },
+      "thicknessMm": 200,
+      "roomIds": ["room-three-living-dining", "room-three-master-bedroom"],
+      "confidence": 0.9,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-three-east",
+      "kind": "structural",
+      "start": { "x": 11200, "y": 0 },
+      "end": { "x": 11200, "y": 8000 },
+      "thicknessMm": 200,
+      "roomIds": ["room-three-master-bedroom", "room-three-children"],
+      "confidence": 0.88,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-three-core",
+      "kind": "partition",
+      "start": { "x": 6800, "y": 0 },
+      "end": { "x": 6800, "y": 8000 },
+      "thicknessMm": 120,
+      "roomIds": ["room-three-living-dining", "room-three-master-bedroom", "room-three-children", "room-three-bathroom"],
+      "confidence": 0.86,
+      "userConfirmed": true
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening-three-balcony-window",
+      "type": "window",
+      "wallId": "wall-three-north",
+      "start": { "x": 1200, "y": 0 },
+      "end": { "x": 4800, "y": 0 },
+      "widthMm": 3600,
+      "sillHeightMm": 300,
+      "heightMm": 2200,
+      "confidence": 0.85,
+      "userConfirmed": true
+    }
+  ],
+  "verifier": {
+    "spaceTruthScore": 0.84,
+    "topologyValid": true,
+    "scaleConfirmed": true,
+    "blockingErrorCodes": [],
+    "warningCodes": ["LOW_CONFIDENCE_ROOM_BOUNDARY"]
+  },
+  "confirmedByUser": true,
+  "confirmedAt": "2026-05-04T00:12:00.000Z",
+  "createdAt": "2026-05-04T00:00:00.000Z",
+  "updatedAt": "2026-05-04T00:12:00.000Z"
+}

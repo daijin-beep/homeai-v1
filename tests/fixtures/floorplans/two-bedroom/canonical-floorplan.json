@@ -1,0 +1,161 @@
+{
+  "id": "canonical-two-bedroom",
+  "projectId": "project-fixture-two",
+  "draftFloorplanId": "draft-two-bedroom",
+  "version": 1,
+  "unit": "mm",
+  "scale": {
+    "source": "user_confirmed",
+    "mmPerPixel": 25,
+    "confidence": 1
+  },
+  "rooms": [
+    {
+      "id": "room-two-living-dining",
+      "type": "living_dining",
+      "label": "Living Dining",
+      "polygon": [
+        { "x": 0, "y": 0 },
+        { "x": 6200, "y": 0 },
+        { "x": 6200, "y": 4600 },
+        { "x": 0, "y": 4600 },
+        { "x": 0, "y": 0 }
+      ],
+      "areaMm2": 28520000,
+      "confidence": 0.91,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-two-master-bedroom",
+      "type": "master_bedroom",
+      "label": "Master Bedroom",
+      "polygon": [
+        { "x": 6200, "y": 0 },
+        { "x": 10400, "y": 0 },
+        { "x": 10400, "y": 4000 },
+        { "x": 6200, "y": 4000 },
+        { "x": 6200, "y": 0 }
+      ],
+      "areaMm2": 16800000,
+      "confidence": 0.89,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-two-bedroom",
+      "type": "bedroom",
+      "label": "Bedroom",
+      "polygon": [
+        { "x": 6200, "y": 4000 },
+        { "x": 10400, "y": 4000 },
+        { "x": 10400, "y": 7600 },
+        { "x": 6200, "y": 7600 },
+        { "x": 6200, "y": 4000 }
+      ],
+      "areaMm2": 15120000,
+      "confidence": 0.88,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-two-kitchen",
+      "type": "kitchen",
+      "label": "Kitchen",
+      "polygon": [
+        { "x": 0, "y": 4600 },
+        { "x": 3000, "y": 4600 },
+        { "x": 3000, "y": 7600 },
+        { "x": 0, "y": 7600 },
+        { "x": 0, "y": 4600 }
+      ],
+      "areaMm2": 9000000,
+      "confidence": 0.87,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-two-bathroom",
+      "type": "bathroom",
+      "label": "Bathroom",
+      "polygon": [
+        { "x": 3000, "y": 4600 },
+        { "x": 6200, "y": 4600 },
+        { "x": 6200, "y": 7600 },
+        { "x": 3000, "y": 7600 },
+        { "x": 3000, "y": 4600 }
+      ],
+      "areaMm2": 9600000,
+      "confidence": 0.86,
+      "userConfirmed": true
+    },
+    {
+      "id": "room-two-balcony",
+      "type": "balcony",
+      "label": "Balcony",
+      "polygon": [
+        { "x": 0, "y": -1600 },
+        { "x": 6200, "y": -1600 },
+        { "x": 6200, "y": 0 },
+        { "x": 0, "y": 0 },
+        { "x": 0, "y": -1600 }
+      ],
+      "areaMm2": 9920000,
+      "confidence": 0.84,
+      "userConfirmed": true
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-two-north",
+      "kind": "structural",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 10400, "y": 0 },
+      "thicknessMm": 200,
+      "roomIds": ["room-two-living-dining", "room-two-master-bedroom"],
+      "confidence": 0.92,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-two-east",
+      "kind": "structural",
+      "start": { "x": 10400, "y": 0 },
+      "end": { "x": 10400, "y": 7600 },
+      "thicknessMm": 200,
+      "roomIds": ["room-two-master-bedroom", "room-two-bedroom"],
+      "confidence": 0.9,
+      "userConfirmed": true
+    },
+    {
+      "id": "wall-two-middle",
+      "kind": "partition",
+      "start": { "x": 6200, "y": 0 },
+      "end": { "x": 6200, "y": 7600 },
+      "thicknessMm": 120,
+      "roomIds": ["room-two-living-dining", "room-two-master-bedroom", "room-two-bedroom"],
+      "confidence": 0.88,
+      "userConfirmed": true
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening-two-balcony-window",
+      "type": "window",
+      "wallId": "wall-two-north",
+      "start": { "x": 1800, "y": 0 },
+      "end": { "x": 4400, "y": 0 },
+      "widthMm": 2600,
+      "sillHeightMm": 300,
+      "heightMm": 2200,
+      "confidence": 0.89,
+      "userConfirmed": true
+    }
+  ],
+  "verifier": {
+    "spaceTruthScore": 0.86,
+    "topologyValid": true,
+    "scaleConfirmed": true,
+    "blockingErrorCodes": [],
+    "warningCodes": []
+  },
+  "confirmedByUser": true,
+  "confirmedAt": "2026-05-04T00:11:00.000Z",
+  "createdAt": "2026-05-04T00:00:00.000Z",
+  "updatedAt": "2026-05-04T00:11:00.000Z"
+}

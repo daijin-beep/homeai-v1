@@ -1,0 +1,8 @@
+{
+  "fixtureId": "fixture_low_confidence_boundaries",
+  "provider": "mock_floorplan",
+  "version": 1,
+  "rooms": ["living", "bedroom", "kitchen", "bathroom"],
+  "warnings": ["low_confidence_room_boundary"],
+  "checksum": "mock-raw-low-confidence-boundaries-v1"
+}
