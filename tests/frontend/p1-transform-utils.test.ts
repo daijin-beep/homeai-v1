@@ -3,6 +3,7 @@ import {
   applyPan,
   applyZoom,
   computeViewBoxFromFloorplanBBox,
+  convertArcLikeInputToPolyline,
   formatMmAsCm,
   parseCmToMm,
   screenPxToWorldMm,
@@ -47,5 +48,21 @@ describe("P1 canvas coordinate utilities", () => {
     expect(formatMmAsCm(1235)).toBe("123.5");
     expect(parseCmToMm("123.5")).toBe(1235);
     expect(parseCmToMm("123,5")).toBe(1235);
+  });
+
+  it("converts arc-like input to polyline points without curve metadata", () => {
+    const points = convertArcLikeInputToPolyline(
+      { x: 0, y: 0 },
+      { x: 500, y: -300 },
+      { x: 1000, y: 0 }
+    );
+
+    expect(points).toEqual([
+      { x: 0, y: 0 },
+      { x: 500, y: -300 },
+      { x: 1000, y: 0 }
+    ]);
+    expect(JSON.stringify(points)).not.toContain("Bezier");
+    expect(JSON.stringify(points)).not.toContain("NURBS");
   });
 });

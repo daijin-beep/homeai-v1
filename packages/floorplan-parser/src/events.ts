@@ -82,6 +82,8 @@ export function eventTypeForOperation(operationType: FloorplanEditOperation["ope
       return "p1_floor_height_changed";
     case "door.dimension.change":
       return "p1_door_dimension_changed";
+    case "advanced.settings.toggle":
+      return "p1_advanced_settings_toggled";
     case "create_wall":
     case "modify_wall":
     case "delete_wall":

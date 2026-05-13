@@ -167,6 +167,13 @@ export function snapPoint(point: Point2D, gridSizeMm = 100): Point2D {
   };
 }
 
+export function convertArcLikeInputToPolyline(start: Point2D, control: Point2D, end: Point2D): Point2D[] {
+  if (pointsEqual(start, control) || pointsEqual(control, end) || pointsEqual(start, end)) {
+    return [clonePoint(start), clonePoint(end)];
+  }
+  return [clonePoint(start), clonePoint(control), clonePoint(end)];
+}
+
 export function pointOnWallAt(wall: Pick<DraftWallSegment, "start" | "end">, positionOnWall: number): Point2D {
   return {
     x: wall.start.x + (wall.end.x - wall.start.x) * positionOnWall,
@@ -205,4 +212,12 @@ export function pointInPolygon(point: Point2D, polygon: readonly Point2D[]): boo
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function clonePoint(point: Point2D): Point2D {
+  return { x: point.x, y: point.y };
+}
+
+function pointsEqual(a: Point2D, b: Point2D): boolean {
+  return a.x === b.x && a.y === b.y;
 }

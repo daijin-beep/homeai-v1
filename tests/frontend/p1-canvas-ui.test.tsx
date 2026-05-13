@@ -183,6 +183,188 @@ describe("P1 Canvas normal mode UI", () => {
     expect(validScenario.confirmCalls).toBe(1);
   });
 
+  it("advanced settings toggle is API-backed, hidden by default, and resets after remount", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    const { unmount } = render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    expect(screen.getByTestId("advanced-state")).toHaveTextContent("closed");
+    expect(screen.queryByTestId("advanced-settings-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("advanced.settings.toggle"));
+    expect(screen.getByTestId("advanced-settings-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-freeWall.draw")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(screen.queryByTestId("advanced-settings-panel")).not.toBeInTheDocument());
+
+    unmount();
+    mockP1Fetch(simpleRectangleHome);
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+    expect(screen.getByTestId("advanced-state")).toHaveTextContent("closed");
+  });
+
+  it("wall thickness and floor height advanced controls send cm-converted operations without geometry warnings", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("advanced.settings.toggle"));
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    expect(await screen.findByTestId("wall-thickness-control")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Wall thickness cm"), { target: { value: "24" } });
+    fireEvent.click(screen.getByText("Apply thickness"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.thickness.change"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({ thicknessMm: 240 });
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(screen.queryByTestId("advanced-settings-panel")).not.toBeInTheDocument());
+    expect(screen.queryByTestId("wall-thickness-control")).not.toBeInTheDocument();
+    expect(scenario.draft.walls.find((wall) => wall.wallId === "wall-simple-east")?.thicknessMm).toBe(240);
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(screen.getByTestId("advanced-settings-panel")).toBeInTheDocument());
+    const geometryBeforeFloorHeight = JSON.stringify({
+      walls: scenario.draft.walls,
+      rooms: scenario.draft.rooms,
+      openings: scenario.draft.openings
+    });
+    fireEvent.change(screen.getByLabelText("Floor height cm"), { target: { value: "310" } });
+    fireEvent.click(screen.getByText("Apply floor height"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("floorHeight.change"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({ floorHeightMm: 3100 });
+    expect(scenario.draft.globalParams.floorHeightMm).toBe(3100);
+    expect(JSON.stringify({
+      walls: scenario.draft.walls,
+      rooms: scenario.draft.rooms,
+      openings: scenario.draft.openings
+    })).toBe(geometryBeforeFloorHeight);
+  });
+
+  it("advanced validation issues use neutral copy for out-of-range values", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    scenario.validationOverride = invalidValidation("WALL_THICKNESS_OUT_OF_RANGE", "Wall thickness is outside range.", "wall", "wall-simple-east");
+    fireEvent.change(screen.getByLabelText("Wall thickness cm"), { target: { value: "2" } });
+    fireEvent.click(screen.getByText("Apply thickness"));
+
+    expect(await screen.findByTestId("validation-issue-WALL_THICKNESS_OUT_OF_RANGE")).toHaveTextContent("该数值超出系统可处理范围");
+  });
+
+  it("free wall drawing supports non-axis, polyline, and arc-like segment-only operations", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    mockSvgRect();
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    fireEvent.click(screen.getByTestId("tool-freeWall.draw"));
+    fireEvent.pointerDown(screen.getByTestId("p1-canvas-stage"), { clientX: 120, clientY: 140 });
+    fireEvent.pointerDown(screen.getByTestId("p1-canvas-stage"), { clientX: 540, clientY: 310 });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("freeWall.draw"));
+    const freePayload = lastOperation(scenario)?.payload as { start: { x: number; y: number }; end: { x: number; y: number } };
+    expect(freePayload.start.x).not.toBe(freePayload.end.x);
+    expect(freePayload.start.y).not.toBe(freePayload.end.y);
+
+    fireEvent.click(screen.getByText("Add polyline wall"));
+    await waitFor(() => expect(scenario.calls.at(-1)?.operations).toHaveLength(2));
+    expect(scenario.calls.at(-1)?.operations.every((operation) => operation.operationType === "freeWall.draw")).toBe(true);
+
+    fireEvent.click(screen.getByText("Add arc-like wall"));
+    await waitFor(() => expect(scenario.calls.at(-1)?.operations).toHaveLength(2));
+    expect(JSON.stringify(scenario.calls.at(-1)?.operations)).not.toContain("curve");
+    expect(JSON.stringify(scenario.calls.at(-1)?.operations)).not.toContain("Bezier");
+    expect(JSON.stringify(scenario.calls.at(-1)?.operations)).not.toContain("NURBS");
+
+    fireEvent.click(screen.getByTestId("tool-wall.add"));
+    fireEvent.pointerDown(screen.getByTestId("p1-canvas-stage"), { clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(screen.getByTestId("p1-canvas-stage"), { clientX: 500, clientY: 240 });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.add"));
+    const normalWall = (lastOperation(scenario)?.payload as { wall: { start: { x: number; y: number }; end: { x: number; y: number } } }).wall;
+    expect(normalWall.start.x === normalWall.end.x || normalWall.start.y === normalWall.end.y).toBe(true);
+  });
+
+  it("door dimensions are advanced-only, update through API, and change rendered door attributes", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome);
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("door-door-simple-entry");
+
+    fireEvent.pointerDown(screen.getByTestId("door-door-simple-entry"));
+    expect(screen.queryByTestId("door-dimensions-control")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("advanced-settings-toggle"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("advanced.settings.toggle"));
+    expect(await screen.findByTestId("door-dimensions-control")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Door width cm"), { target: { value: "95" } });
+    fireEvent.change(screen.getByLabelText("Door height cm"), { target: { value: "220" } });
+    fireEvent.click(screen.getByText("Apply door dimensions"));
+
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("door.dimension.change"));
+    expect(lastOperation(scenario)?.payload).toMatchObject({ widthMm: 950, heightMm: 2200 });
+    expect(screen.getByTestId("door-door-simple-entry")).toHaveAttribute("data-width-mm", "950");
+  });
+
+  it("re-entry shows status, first-edit notice once, and non-blocking operation still saves", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome, {
+      session: {
+        activeCanonicalRevisionId: "canonical-existing",
+        geometryHash: `sha256:${"b".repeat(64)}`
+      }
+    });
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    expect(screen.getByTestId("reentry-status")).toHaveTextContent("canonical-existing");
+    expect(screen.getByTestId("advanced-state")).toHaveTextContent("closed");
+
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    fireEvent.click(screen.getByText("删除墙"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.delete"));
+    expect(await screen.findByTestId("reentry-edit-notice")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("dismiss-reentry-notice"));
+    expect(screen.queryByTestId("reentry-edit-notice")).not.toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-north"));
+    fireEvent.click(screen.getByText("删除墙"));
+    await waitFor(() => expect(lastOperation(scenario)?.targetId).toBe("wall-simple-north"));
+    expect(screen.queryByTestId("reentry-edit-notice")).not.toBeInTheDocument();
+  });
+
+  it("confirm displays unchanged and changed geometryHash invalidation summaries from API", async () => {
+    const unchanged = mockP1Fetch(simpleRectangleHome, {
+      session: {
+        activeCanonicalRevisionId: "canonical-existing",
+        geometryHash: `sha256:${"c".repeat(64)}`
+      },
+      confirmChanged: false
+    });
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+    fireEvent.click(screen.getByText("确认户型，开始设计"));
+    expect(await screen.findByTestId("confirm-invalidation-summary")).toHaveTextContent("户型未变化");
+    expect(unchanged.confirmCalls).toBe(1);
+    cleanup();
+
+    mockP1Fetch(simpleRectangleHome, {
+      session: {
+        activeCanonicalRevisionId: "canonical-existing",
+        geometryHash: `sha256:${"d".repeat(64)}`
+      },
+      confirmChanged: true
+    });
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+    fireEvent.click(screen.getByText("确认户型，开始设计"));
+    expect(await screen.findByTestId("confirm-invalidation-summary")).toHaveTextContent("户型已更新");
+  });
+
   it("UI source does not import repositories or canonical/scene builders", async () => {
     const fs = await import("node:fs");
     const source = fs.readFileSync("apps/web/app/p1/_components/P1FloorplanEditor.tsx", "utf8");
@@ -196,7 +378,12 @@ describe("P1 Canvas normal mode UI", () => {
 
 function mockP1Fetch(
   fixture: FloorplanDraftRevision,
-  options: { validation?: DraftValidationState; failNextPatch?: boolean } = {}
+  options: {
+    validation?: DraftValidationState;
+    failNextPatch?: boolean;
+    session?: { activeCanonicalRevisionId: string; geometryHash: string };
+    confirmChanged?: boolean;
+  } = {}
 ) {
   const scenario = {
     draft: structuredClone(fixture),
@@ -212,7 +399,8 @@ function mockP1Fetch(
       return jsonResponse({
         draftRevisionId: scenario.draft.draftRevisionId,
         source: scenario.draft.source,
-        validationSummary: { status: "valid", canConfirm: true, issueCount: 0, blockingIssueCount: 0 }
+        validationSummary: { status: "valid", canConfirm: true, issueCount: 0, blockingIssueCount: 0 },
+        ...(options.session ?? {})
       });
     }
     if (url.includes("/operations")) {
@@ -241,8 +429,8 @@ function mockP1Fetch(
         geometryHash: `sha256:${"a".repeat(64)}`,
         sceneContractId: "scene-test",
         invalidationSummary: {
-          changed: false,
-          invalidatedDependencyIds: [],
+          changed: options.confirmChanged ?? false,
+          invalidatedDependencyIds: options.confirmChanged ? ["dependency-camera"] : [],
           archivedDependencyIds: [],
           preserved: {
             uploadedSourceAsset: true,

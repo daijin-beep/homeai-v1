@@ -235,7 +235,8 @@ export const FloorplanEditOperationSchema = z
       "wall.thickness.change",
       "freeWall.draw",
       "floorHeight.change",
-      "door.dimension.change"
+      "door.dimension.change",
+      "advanced.settings.toggle"
     ]),
     targetType: z.enum(["draft", "wall", "opening", "room", "global_params"]),
     targetId: IdSchema.optional(),

@@ -133,6 +133,7 @@ describe("P1 event tracking skeleton", () => {
 
     const events = context.repositories.events.listEventsByDraftRevision(session.draftRevisionId);
     expect(eventTypeForOperation("door.direction.change")).toBe("p1_door_direction_changed");
+    expect(eventTypeForOperation("advanced.settings.toggle")).toBe("p1_advanced_settings_toggled");
     expect(events).toEqual(expect.arrayContaining([
       expect.objectContaining({ eventType: "p1_door_direction_changed", operationType: "door.direction.change" }),
       expect.objectContaining({ eventType: "p1_floorplan_confirmed", geometryHash: confirmed.geometryHash })

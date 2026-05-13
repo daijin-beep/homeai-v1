@@ -11,12 +11,14 @@ import type {
   DraftWindowOpening,
   FloorplanDraftRevision,
   FloorplanEditOperation,
+  P1InvalidationSummary,
   P1RoomType,
   Point2D
 } from "@homeai/contracts";
 import {
   applyPan,
   applyZoom,
+  convertArcLikeInputToPolyline,
   computeFloorplanBBox,
   computeSegmentLengthMm,
   computeViewBoxFromFloorplanBBox,
@@ -41,7 +43,9 @@ import {
   validateP1Draft
 } from "../_lib/p1-api-client.js";
 
-type ToolMode = "select" | "wall.add" | "door.add" | "window.add" | "balcony.add";
+type ToolMode = "select" | "wall.add" | "door.add" | "window.add" | "balcony.add" | "freeWall.draw";
+
+type AdvancedWallMode = "free_straight" | "polyline" | "arc_like";
 
 type SelectedElement =
   | { type: "wall"; id: string }
@@ -61,6 +65,7 @@ type ConfirmSuccess = {
   geometryHash: string;
   sceneContractId: string;
   nextStage: string;
+  invalidationSummary: P1InvalidationSummary;
 };
 
 const ROOM_TYPES: P1RoomType[] = [
@@ -96,6 +101,20 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
   const [pendingWallStart, setPendingWallStart] = useState<Point2D | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [lengthInputCm, setLengthInputCm] = useState("");
+  const [wallThicknessInputCm, setWallThicknessInputCm] = useState("");
+  const [floorHeightInputCm, setFloorHeightInputCm] = useState("");
+  const [doorWidthInputCm, setDoorWidthInputCm] = useState("");
+  const [doorHeightInputCm, setDoorHeightInputCm] = useState("");
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false);
+  const [lastWallThicknessMm, setLastWallThicknessMm] = useState(120);
+  const [advancedWallMode, setAdvancedWallMode] = useState<AdvancedWallMode>("free_straight");
+  const [reentryState, setReentryState] = useState<{
+    activeCanonicalRevisionId: string;
+    previousGeometryHash: string;
+  } | null>(null);
+  const [showReentryEditNotice, setShowReentryEditNotice] = useState(false);
+  const [reentryNoticeDismissed, setReentryNoticeDismissed] = useState(false);
+  const [hasShownReentryEditNotice, setHasShownReentryEditNotice] = useState(false);
   const [confirmSuccess, setConfirmSuccess] = useState<ConfirmSuccess | null>(null);
   const devHostname = typeof window === "undefined" ? "" : window.location.hostname;
   const showDebugLink = devHostname === "localhost" || devHostname === "127.0.0.1";
@@ -111,6 +130,15 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
           return;
         }
         setDraftRevisionId(session.draftRevisionId);
+        setIsAdvancedSettingsOpen(false);
+        setReentryState(
+          session.activeCanonicalRevisionId !== undefined && session.geometryHash !== undefined
+            ? {
+                activeCanonicalRevisionId: session.activeCanonicalRevisionId,
+                previousGeometryHash: session.geometryHash
+              }
+            : null
+        );
         const response = await fetchP1Draft(session.draftRevisionId);
         if (cancelled) {
           return;
@@ -153,11 +181,32 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
 
   useEffect(() => {
     setLengthInputCm(selectedWall === undefined ? "" : formatMmAsCm(computeSegmentLengthMm(selectedWall)));
+    setWallThicknessInputCm(selectedWall === undefined ? "" : formatMmAsCm(selectedWall.thicknessMm));
+    if (selectedWall !== undefined) {
+      setLastWallThicknessMm(selectedWall.thicknessMm);
+    }
   }, [selectedWall]);
 
-  async function submitOperations(operations: FloorplanEditOperation[]) {
-    if (draftRevisionId === null) {
+  useEffect(() => {
+    setFloorHeightInputCm(formatMmAsCm(currentDraft?.globalParams.floorHeightMm ?? 2800));
+  }, [currentDraft?.globalParams.floorHeightMm]);
+
+  useEffect(() => {
+    if (selectedOpening?.type !== "door") {
+      setDoorWidthInputCm("");
+      setDoorHeightInputCm("");
       return;
+    }
+    setDoorWidthInputCm(formatMmAsCm(selectedOpening.widthMm));
+    setDoorHeightInputCm(formatMmAsCm(selectedOpening.heightMm));
+  }, [selectedOpening]);
+
+  async function submitOperations(
+    operations: FloorplanEditOperation[],
+    options: { showReentryNotice?: boolean } = { showReentryNotice: true }
+  ): Promise<FloorplanDraftRevision | undefined> {
+    if (draftRevisionId === null) {
+      return undefined;
     }
     setIsSaving(true);
     setApiError(null);
@@ -167,6 +216,11 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
       const validation = await validateP1Draft(draftRevisionId);
       setValidationState(validation);
       setIsDirty(true);
+      if (options.showReentryNotice !== false && reentryState !== null && !hasShownReentryEditNotice && !reentryNoticeDismissed) {
+        setShowReentryEditNotice(true);
+        setHasShownReentryEditNotice(true);
+      }
+      return response.draft;
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "操作未保存，已保留服务器草稿");
     } finally {
@@ -190,6 +244,73 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     };
   }
 
+  function handleAdvancedToggle() {
+    const next = !isAdvancedSettingsOpen;
+    setIsAdvancedSettingsOpen(next);
+    if (!next && activeTool === "freeWall.draw") {
+      setActiveTool("select");
+      setPendingWallStart(null);
+    }
+    void submitOperations([
+      createOperation("advanced.settings.toggle", "draft", {
+        payload: { isOpen: next }
+      })
+    ], { showReentryNotice: false });
+  }
+
+  function createFreeWallOperations(points: Point2D[], mode: AdvancedWallMode): FloorplanEditOperation[] {
+    const usablePoints = points.filter((point, index, allPoints) => {
+      const previous = allPoints[index - 1];
+      return previous === undefined || previous.x !== point.x || previous.y !== point.y;
+    });
+    const operations: FloorplanEditOperation[] = [];
+    for (let index = 0; index < usablePoints.length - 1; index += 1) {
+      const start = usablePoints[index];
+      const end = usablePoints[index + 1];
+      if (start === undefined || end === undefined) {
+        continue;
+      }
+      operations.push(createOperation("freeWall.draw", "wall", {
+        payload: {
+          wallId: `wall-free-${Date.now()}-${index + 1}`,
+          start,
+          end,
+          thicknessMm: lastWallThicknessMm,
+          kind: "interior",
+          uiKind: mode
+        }
+      }));
+    }
+    return operations;
+  }
+
+  async function handleAddPolylineWall() {
+    if (currentDraft === null) {
+      return;
+    }
+    const start = {
+      x: Math.round((bbox.minX + bbox.widthMm * 0.2) / 100) * 100,
+      y: Math.round((bbox.minY + bbox.heightMm * 0.25) / 100) * 100
+    };
+    const mid = { x: start.x + 900, y: start.y + 600 };
+    const end = { x: start.x + 1800, y: start.y + 300 };
+    await submitOperations(createFreeWallOperations([start, mid, end], "polyline"));
+  }
+
+  async function handleAddArcLikeWall() {
+    if (currentDraft === null) {
+      return;
+    }
+    const start = {
+      x: Math.round((bbox.minX + bbox.widthMm * 0.55) / 100) * 100,
+      y: Math.round((bbox.minY + bbox.heightMm * 0.25) / 100) * 100
+    };
+    const control = { x: start.x + 700, y: start.y - 500 };
+    const end = { x: start.x + 1400, y: start.y };
+    const points = convertArcLikeInputToPolyline(start, control, end);
+    await submitOperations(createFreeWallOperations(points, "arc_like"));
+  }
+
   function handleSvgPointerDown(event: PointerEvent<SVGSVGElement>) {
     if (currentDraft === null) {
       return;
@@ -209,12 +330,22 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
         wallId: `wall-user-${Date.now()}`,
         start: pendingWallStart,
         end,
-        thicknessMm: defaultWallThickness(currentDraft),
+        thicknessMm: lastWallThicknessMm,
         kind: "interior",
         source: "user_created"
       };
       setPendingWallStart(null);
       void submitOperations([createOperation("wall.add", "wall", { payload: { wall } })]);
+      return;
+    }
+    if (activeTool === "freeWall.draw" && isAdvancedSettingsOpen) {
+      const snapped = snapPoint(point, currentDraft.globalParams.gridSizeMm ?? 100);
+      if (pendingWallStart === null) {
+        setPendingWallStart(snapped);
+        return;
+      }
+      setPendingWallStart(null);
+      void submitOperations(createFreeWallOperations([pendingWallStart, snapped], advancedWallMode));
       return;
     }
     if (activeTool === "balcony.add") {
@@ -372,6 +503,59 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     ]);
   }
 
+  async function handleWallThicknessSubmit() {
+    if (selectedWall === undefined) {
+      return;
+    }
+    const thicknessMm = parseCmToMm(wallThicknessInputCm);
+    setLastWallThicknessMm(thicknessMm);
+    await submitOperations([
+      createOperation("wall.thickness.change", "wall", {
+        targetId: selectedWall.wallId,
+        payload: { thicknessMm }
+      })
+    ]);
+  }
+
+  async function handleFloorHeightSubmit() {
+    const floorHeightMm = parseCmToMm(floorHeightInputCm);
+    const beforeGeometry = JSON.stringify({
+      walls: currentDraft?.walls ?? [],
+      rooms: currentDraft?.rooms ?? [],
+      openings: currentDraft?.openings ?? []
+    });
+    const updated = await submitOperations([
+      createOperation("floorHeight.change", "global_params", {
+        payload: { floorHeightMm }
+      })
+    ]);
+    if (updated !== undefined) {
+      const afterGeometry = JSON.stringify({
+        walls: updated.walls,
+        rooms: updated.rooms,
+        openings: updated.openings
+      });
+      if (beforeGeometry !== afterGeometry) {
+        setApiError("Floor height changed 2D geometry unexpectedly.");
+      }
+    }
+  }
+
+  async function handleDoorDimensionsSubmit() {
+    if (selectedOpening?.type !== "door") {
+      return;
+    }
+    await submitOperations([
+      createOperation("door.dimension.change", "opening", {
+        targetId: selectedOpening.openingId,
+        payload: {
+          widthMm: parseCmToMm(doorWidthInputCm),
+          heightMm: parseCmToMm(doorHeightInputCm)
+        }
+      })
+    ]);
+  }
+
   async function handleDeleteSelected() {
     if (selectedElement === null) {
       return;
@@ -408,13 +592,13 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
       return;
     }
     const beforeWalls = JSON.stringify(currentDraft?.walls ?? []);
-    await submitOperations([
+    const updated = await submitOperations([
       createOperation("window.type.change", "opening", {
         targetId: selectedOpening.openingId,
         payload: { windowKind: event.target.value }
       })
     ]);
-    if (currentDraft !== null && beforeWalls !== JSON.stringify(currentDraft.walls)) {
+    if (updated !== undefined && beforeWalls !== JSON.stringify(updated.walls)) {
       setApiError("Bay window changed wall geometry unexpectedly.");
     }
   }
@@ -464,7 +648,8 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
         canonicalRevisionId: result.canonicalRevisionId,
         geometryHash: result.geometryHash,
         sceneContractId: result.sceneContractId,
-        nextStage: result.nextStage
+        nextStage: result.nextStage,
+        invalidationSummary: result.invalidationSummary
       };
       setConfirmSuccess(success);
       setIsDirty(false);
@@ -526,6 +711,26 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
               {toolLabel(tool)}
             </button>
           ))}
+          {isAdvancedSettingsOpen ? (
+            <button
+              type="button"
+              data-testid="tool-freeWall.draw"
+              aria-pressed={activeTool === "freeWall.draw"}
+              onClick={() => setActiveTool("freeWall.draw")}
+              style={activeTool === "freeWall.draw" ? styles.toolButtonActive : styles.toolButton}
+            >
+              Free wall
+            </button>
+          ) : null}
+          <button
+            type="button"
+            data-testid="advanced-settings-toggle"
+            aria-pressed={isAdvancedSettingsOpen}
+            style={isAdvancedSettingsOpen ? styles.toolButtonActive : styles.toolButton}
+            onClick={handleAdvancedToggle}
+          >
+            Advanced
+          </button>
           <button type="button" style={styles.toolButton} onClick={() => setViewTransform((value) => applyZoom(value, 1.2))}>
             放大
           </button>
@@ -542,9 +747,35 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
 
         <section style={styles.stageWrap}>
           {apiError !== null ? <div role="alert" style={styles.errorBanner}>{apiError}</div> : null}
+          {reentryState !== null ? (
+            <div data-testid="reentry-status" style={styles.statusBanner}>
+              Re-entry draft from {reentryState.activeCanonicalRevisionId}
+            </div>
+          ) : null}
+          {showReentryEditNotice ? (
+            <div data-testid="reentry-edit-notice" style={styles.noticeBanner}>
+              修改户型会导致已生成的方案和渲染重新生成
+              <button
+                type="button"
+                data-testid="dismiss-reentry-notice"
+                style={styles.inlineButton}
+                onClick={() => {
+                  setShowReentryEditNotice(false);
+                  setReentryNoticeDismissed(true);
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
           {confirmSuccess !== null ? (
             <div data-testid="confirm-success" style={styles.successBanner}>
               已确认：{confirmSuccess.geometryHash.slice(0, 18)}... / {confirmSuccess.sceneContractId}
+              <span data-testid="confirm-invalidation-summary">
+                {confirmSuccess.invalidationSummary.changed
+                  ? " 户型已更新，需要重新生成后续方案"
+                  : " 户型未变化，已保留当前方案"}
+              </span>
             </div>
           ) : null}
           <svg
@@ -625,7 +856,47 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
             <h2 style={styles.panelTitle}>属性</h2>
             <p data-testid="active-tool">工具：{toolLabel(activeTool)}</p>
             <p data-testid="dirty-state">状态：{isSaving ? "保存中" : isDirty ? "已修改" : "已同步"}</p>
+            <p data-testid="advanced-state">Advanced: {isAdvancedSettingsOpen ? "open" : "closed"}</p>
+            {reentryState !== null ? <p data-testid="reentry-panel-state">Re-entry hash: {reentryState.previousGeometryHash.slice(0, 18)}...</p> : null}
           </div>
+          {isAdvancedSettingsOpen ? (
+            <div style={styles.panelSection} data-testid="advanced-settings-panel">
+              <h3 style={styles.sectionTitle}>Advanced settings</h3>
+              <label style={styles.label}>
+                Floor height (cm)
+                <input
+                  aria-label="Floor height cm"
+                  value={floorHeightInputCm}
+                  onChange={(event) => setFloorHeightInputCm(event.target.value)}
+                  style={styles.input}
+                />
+              </label>
+              <button type="button" style={styles.fullWidthButton} onClick={handleFloorHeightSubmit} disabled={isSaving}>
+                Apply floor height
+              </button>
+              <label style={styles.label}>
+                Free wall mode
+                <select
+                  aria-label="Free wall mode"
+                  value={advancedWallMode}
+                  onChange={(event) => setAdvancedWallMode(event.target.value as AdvancedWallMode)}
+                  style={styles.input}
+                >
+                  <option value="free_straight">free_straight</option>
+                  <option value="polyline">polyline</option>
+                  <option value="arc_like">arc_like</option>
+                </select>
+              </label>
+              <div style={styles.row}>
+                <button type="button" onClick={handleAddPolylineWall} disabled={isSaving}>
+                  Add polyline wall
+                </button>
+                <button type="button" onClick={handleAddArcLikeWall} disabled={isSaving}>
+                  Add arc-like wall
+                </button>
+              </div>
+            </div>
+          ) : null}
           {selectedElement === null ? (
             <div style={styles.panelSection}>
               <p>选择墙、门窗、阳台或房间后编辑属性。</p>
@@ -644,8 +915,22 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
                   style={styles.input}
                 />
               </label>
+              {isAdvancedSettingsOpen ? (
+                <label style={styles.label} data-testid="wall-thickness-control">
+                  Wall thickness (cm)
+                  <input
+                    aria-label="Wall thickness cm"
+                    value={wallThicknessInputCm}
+                    onChange={(event) => setWallThicknessInputCm(event.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+              ) : null}
               <div style={styles.row}>
                 <button type="button" onClick={handleWallLengthSubmit} disabled={isSaving}>应用长度</button>
+                {isAdvancedSettingsOpen ? (
+                  <button type="button" onClick={handleWallThicknessSubmit} disabled={isSaving}>Apply thickness</button>
+                ) : null}
                 <button type="button" onClick={handleDeleteSelected} disabled={isSaving}>删除墙</button>
               </div>
               <div style={styles.row}>
@@ -666,6 +951,31 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
                   <option value="right_out">right_out</option>
                 </select>
               </label>
+              {isAdvancedSettingsOpen ? (
+                <div data-testid="door-dimensions-control" style={styles.compactGrid}>
+                  <label style={styles.label}>
+                    Door width (cm)
+                    <input
+                      aria-label="Door width cm"
+                      value={doorWidthInputCm}
+                      onChange={(event) => setDoorWidthInputCm(event.target.value)}
+                      style={styles.input}
+                    />
+                  </label>
+                  <label style={styles.label}>
+                    Door height (cm)
+                    <input
+                      aria-label="Door height cm"
+                      value={doorHeightInputCm}
+                      onChange={(event) => setDoorHeightInputCm(event.target.value)}
+                      style={styles.input}
+                    />
+                  </label>
+                  <button type="button" onClick={handleDoorDimensionsSubmit} disabled={isSaving}>
+                    Apply door dimensions
+                  </button>
+                </div>
+              ) : null}
               <button type="button" onClick={handleDeleteSelected} disabled={isSaving}>删除门</button>
             </div>
           ) : null}
@@ -712,6 +1022,17 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
             </div>
           ) : null}
           <ValidationPanel validationState={validationState} />
+          {showDebugLink ? (
+            <div style={styles.panelSection} data-testid="p1-dev-debug-panel">
+              <h3 style={styles.sectionTitle}>Debug state</h3>
+              <p>advanced={isAdvancedSettingsOpen ? "open" : "closed"}</p>
+              <p>floorHeightMm={currentDraft?.globalParams.floorHeightMm ?? "unset"}</p>
+              <p>selected={selectedElement === null ? "none" : `${selectedElement.type}:${selectedElement.id}`}</p>
+              <p>reentry={reentryState === null ? "no" : reentryState.activeCanonicalRevisionId}</p>
+              <p>lastConfirm={confirmSuccess?.canonicalRevisionId ?? "none"}</p>
+              <p>invalidation={confirmSuccess?.invalidationSummary.changed === true ? "changed" : confirmSuccess === null ? "none" : "unchanged"}</p>
+            </div>
+          ) : null}
         </aside>
       </section>
     </main>
@@ -827,13 +1148,15 @@ function renderDoor(
     <g
       key={opening.openingId}
       data-testid={`door-${opening.openingId}`}
+      data-width-mm={opening.widthMm}
+      data-height-mm={opening.heightMm}
       onPointerDown={(event) => {
         event.stopPropagation();
         setSelectedElement({ type: "door", id: opening.openingId });
       }}
     >
       <circle cx={point.x} cy={point.y} r={150} fill={selected ? "#f97316" : "#fb923c"} stroke="#ffffff" strokeWidth={28} />
-      <path d={`M ${point.x} ${point.y} l 280 0`} stroke="#7c2d12" strokeWidth={34} strokeLinecap="round" />
+      <path d={`M ${point.x} ${point.y} l ${Math.max(220, opening.widthMm / 2)} 0`} stroke="#7c2d12" strokeWidth={34} strokeLinecap="round" />
     </g>
   );
 }
@@ -1005,6 +1328,8 @@ function toolLabel(tool: ToolMode): string {
       return "加窗";
     case "balcony.add":
       return "画阳台";
+    case "freeWall.draw":
+      return "Free wall";
   }
 }
 
@@ -1130,6 +1455,16 @@ const styles = {
     gap: 8,
     marginTop: 10
   },
+  compactGrid: {
+    display: "grid",
+    gap: 8,
+    marginTop: 10
+  },
+  fullWidthButton: {
+    marginTop: 8,
+    width: "100%",
+    minHeight: 34
+  },
   issueList: {
     margin: 0,
     paddingLeft: 18
@@ -1155,5 +1490,36 @@ const styles = {
     color: "#166534",
     padding: "8px 10px",
     borderRadius: 6
+  },
+  statusBanner: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 1,
+    background: "#e0f2fe",
+    border: "1px solid #bae6fd",
+    color: "#075985",
+    padding: "8px 10px",
+    borderRadius: 6
+  },
+  noticeBanner: {
+    position: "absolute",
+    top: 56,
+    left: 12,
+    zIndex: 2,
+    background: "#fef3c7",
+    border: "1px solid #fde68a",
+    color: "#92400e",
+    padding: "8px 10px",
+    borderRadius: 6,
+    display: "flex",
+    alignItems: "center",
+    gap: 10
+  },
+  inlineButton: {
+    border: "1px solid #d97706",
+    background: "#ffffff",
+    color: "#92400e",
+    borderRadius: 4
   }
 } satisfies Record<string, CSSProperties>;

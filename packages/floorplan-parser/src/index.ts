@@ -685,6 +685,8 @@ function applyOperation(
           floorHeightMm: requireNumber(payload.floorHeightMm, "floorHeightMm")
         }
       });
+    case "advanced.settings.toggle":
+      return cloneDraft(draft);
     case "validate_draft":
     case "create_wall":
     case "modify_wall":
