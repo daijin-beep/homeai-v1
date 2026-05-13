@@ -19,7 +19,12 @@ import {
 } from "@homeai/floorplan-parser";
 import type { FloorplanDraftRevision } from "@homeai/contracts";
 
-const repositories = createInMemoryP1Repositories();
+type P1RuntimeGlobal = typeof globalThis & {
+  __homeaiP1Repositories?: ReturnType<typeof createInMemoryP1Repositories>;
+};
+
+const p1RuntimeGlobal = globalThis as P1RuntimeGlobal;
+const repositories = p1RuntimeGlobal.__homeaiP1Repositories ??= createInMemoryP1Repositories();
 
 const demoTimestamp = "2026-05-13T00:00:00.000Z";
 const demoDraft: FloorplanDraftRevision = {
