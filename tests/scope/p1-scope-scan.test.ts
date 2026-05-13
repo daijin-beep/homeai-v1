@@ -62,6 +62,27 @@ describe("P1 release-gate scope scan", () => {
 
     expect(hits).toEqual([]);
   });
+
+  it("keeps downstream baseline builders behind SceneContract instead of draft or store imports", () => {
+    const files = collectFiles([join(repoRoot, "packages", "scene", "src")]);
+    const forbidden = [
+      /@homeai\/floorplan-parser/,
+      /FloorplanDraftRevision/,
+      /DraftWallSegment/,
+      /DraftOpening/,
+      /createInMemoryP1Repositories/,
+      /postP1/,
+      /confirmFloorplanDraft/
+    ];
+    const hits = files.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
 });
 
 function collectFiles(roots: string[]): string[] {

@@ -538,6 +538,7 @@ describe("P1 floorplan adjustment contracts", () => {
       artifactType: "scene_contract",
       homeId: "home-1",
       canonicalRevisionId: "canonical-revision-1",
+      sceneContractId: "scene-1",
       geometryHash,
       upstreamArtifactIds: ["canonical-revision-1"],
       createdAt: timestamp
@@ -549,6 +550,13 @@ describe("P1 floorplan adjustment contracts", () => {
       GeometryDependentArtifactSchema.safeParse({
         ...artifact,
         geometryHash: undefined
+      }).success
+    ).toBe(false);
+
+    expect(
+      GeometryDependentArtifactSchema.safeParse({
+        ...artifact,
+        sceneContractId: undefined
       }).success
     ).toBe(false);
   });

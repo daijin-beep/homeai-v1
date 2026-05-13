@@ -22,6 +22,7 @@ import {
   polygonizeClosedFaces,
   preserveRoomLabels
 } from "@homeai/geometry";
+import { buildFullSpaceCoverageFromSceneContract } from "@homeai/scene";
 import {
   applyFloorplanOperations,
   buildDraftValidationState,
@@ -112,6 +113,63 @@ export type P1DebugPayload = {
     roomCount: number;
     wallCount: number;
     openingCount: number;
+  };
+  downstreamBaselineSummary?: {
+    whiteModel: {
+      whiteModelId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      roomCount: number;
+      wallCount: number;
+    };
+    controlScene: {
+      controlSceneId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      roomCount: number;
+    };
+    cameraPlan: {
+      cameraPlanBatchId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      roomPlanCount: number;
+    };
+    roomAffordanceGraph: {
+      affordanceGraphId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      roomCount: number;
+    };
+    anchorPlan: {
+      anchorPlanId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      anchorCount: number;
+    };
+    coverageReport: {
+      coverageReportId: string;
+      canonicalRevisionId: string;
+      sceneContractId: string;
+      geometryHash: string;
+      status: string;
+      issueCount: number;
+      roomCoverageCount: number;
+    };
   };
   downstreamDependencies: GeometryDependencyRecord[];
   invalidationSummary: P1InvalidationSummary;
@@ -350,6 +408,9 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
         canonicalRevisionId: canonicalRevision.canonicalRevisionId
       });
   const comparison = compareGeometryHash(canonicalRevision?.geometryHash, sceneContract?.geometryHash);
+  const downstreamBaseline = sceneContract === undefined
+    ? undefined
+    : buildFullSpaceCoverageFromSceneContract(sceneContract);
 
   return {
     fixture: {
@@ -382,6 +443,67 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
             roomCount: sceneContract.rooms.length,
             wallCount: sceneContract.walls.length,
             openingCount: sceneContract.openings.length
+          }
+        }),
+    ...(downstreamBaseline === undefined
+      ? {}
+      : {
+          downstreamBaselineSummary: {
+            whiteModel: {
+              whiteModelId: downstreamBaseline.whiteModel.whiteModelId,
+              canonicalRevisionId: downstreamBaseline.whiteModel.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.whiteModel.sceneContractId,
+              geometryHash: downstreamBaseline.whiteModel.geometryHash,
+              status: downstreamBaseline.whiteModel.status,
+              issueCount: downstreamBaseline.whiteModel.issues.length,
+              roomCount: downstreamBaseline.whiteModel.rooms.length,
+              wallCount: downstreamBaseline.whiteModel.walls.length
+            },
+            controlScene: {
+              controlSceneId: downstreamBaseline.controlScene.controlSceneId,
+              canonicalRevisionId: downstreamBaseline.controlScene.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.controlScene.sceneContractId,
+              geometryHash: downstreamBaseline.controlScene.geometryHash,
+              status: downstreamBaseline.controlScene.status,
+              issueCount: downstreamBaseline.controlScene.issues.length,
+              roomCount: downstreamBaseline.controlScene.rooms.length
+            },
+            cameraPlan: {
+              cameraPlanBatchId: downstreamBaseline.cameraPlan.cameraPlanBatchId,
+              canonicalRevisionId: downstreamBaseline.cameraPlan.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.cameraPlan.sceneContractId,
+              geometryHash: downstreamBaseline.cameraPlan.geometryHash,
+              status: downstreamBaseline.cameraPlan.status,
+              issueCount: downstreamBaseline.cameraPlan.issues.length,
+              roomPlanCount: downstreamBaseline.cameraPlan.roomPlans.length
+            },
+            roomAffordanceGraph: {
+              affordanceGraphId: downstreamBaseline.affordanceGraph.affordanceGraphId,
+              canonicalRevisionId: downstreamBaseline.affordanceGraph.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.affordanceGraph.sceneContractId,
+              geometryHash: downstreamBaseline.affordanceGraph.geometryHash,
+              status: downstreamBaseline.affordanceGraph.status,
+              issueCount: downstreamBaseline.affordanceGraph.issues.length,
+              roomCount: downstreamBaseline.affordanceGraph.rooms.length
+            },
+            anchorPlan: {
+              anchorPlanId: downstreamBaseline.anchorPlan.anchorPlanId,
+              canonicalRevisionId: downstreamBaseline.anchorPlan.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.anchorPlan.sceneContractId,
+              geometryHash: downstreamBaseline.anchorPlan.geometryHash,
+              status: downstreamBaseline.anchorPlan.status,
+              issueCount: downstreamBaseline.anchorPlan.issues.length,
+              anchorCount: downstreamBaseline.anchorPlan.anchors.length
+            },
+            coverageReport: {
+              coverageReportId: downstreamBaseline.coverageReport.coverageReportId,
+              canonicalRevisionId: downstreamBaseline.coverageReport.canonicalRevisionId,
+              sceneContractId: downstreamBaseline.coverageReport.sceneContractId,
+              geometryHash: downstreamBaseline.coverageReport.geometryHash,
+              status: downstreamBaseline.coverageReport.status,
+              issueCount: downstreamBaseline.coverageReport.issues.length,
+              roomCoverageCount: downstreamBaseline.coverageReport.roomCoverage.length
+            }
           }
         }),
     downstreamDependencies: dependencies,
