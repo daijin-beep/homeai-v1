@@ -1,0 +1,16 @@
+{
+  "policyId": "policy_mock_v1",
+  "providerName": "mock",
+  "modelName": "mock-deterministic-v1",
+  "status": "allowed_for_mock",
+  "maxCandidatesPerRoom": 1,
+  "maxAttemptsPerJob": 3,
+  "timeoutMs": 5000,
+  "maxEstimatedCostCentsPerCandidate": 0,
+  "commercialUseStatus": "allowed",
+  "dataRetentionStatus": "acceptable",
+  "copyrightRisk": "low",
+  "requiresHumanReview": false,
+  "approvedBy": "claude-code-track-b",
+  "approvedAt": "2026-05-13T00:00:00+00:00"
+}

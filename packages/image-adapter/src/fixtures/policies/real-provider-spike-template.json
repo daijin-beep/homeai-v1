@@ -1,0 +1,14 @@
+{
+  "policyId": "policy_real_provider_spike_template_v1",
+  "providerName": "PENDING_KIM_DECISION",
+  "modelName": "PENDING_KIM_DECISION",
+  "status": "blocked",
+  "maxCandidatesPerRoom": 1,
+  "maxAttemptsPerJob": 2,
+  "timeoutMs": 60000,
+  "maxEstimatedCostCentsPerCandidate": 0,
+  "commercialUseStatus": "unknown",
+  "dataRetentionStatus": "unknown",
+  "copyrightRisk": "unknown",
+  "requiresHumanReview": true
+}
