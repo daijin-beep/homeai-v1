@@ -25,10 +25,12 @@ import {
 } from "@homeai/floorplan-parser";
 import {
   homeWithBayWindow,
+  invalidP1DraftFixtures,
   p1FixtureTimestamp,
   simpleRectangleHome,
   validP1DraftFixtures
 } from "../fixtures/p1/index.js";
+import { layoutBedroomUserBed } from "../fixtures/p1/layout-intent.js";
 import { apiContext } from "./p1-api-boundary.test.js";
 
 const mismatchedHash = `sha256:${"0".repeat(64)}` as GeometryHash;
@@ -50,9 +52,9 @@ describe("P1 downstream integration hardening", () => {
         createdAt: p1FixtureTimestamp
       });
 
-      expect(bundle.coverageReport.status).toBe("ready");
+      expect(bundle.coverageReport.status).toBe("pass");
       expect(bundle.coverageReport.roomCoverage).toHaveLength(scene.rooms.length);
-      expect(bundle.coverageReport.roomCoverage.every((room) => room.status === "covered")).toBe(true);
+      expect(bundle.coverageReport.roomCoverage.every((room) => room.status === "pass")).toBe(true);
       for (const artifact of [
         bundle.whiteModel,
         bundle.controlScene,
@@ -65,7 +67,8 @@ describe("P1 downstream integration hardening", () => {
         expect(artifact.canonicalRevisionId).toBe(scene.canonicalRevisionId);
         expect(artifact.sceneContractId).toBe(scene.sceneContractId);
         expect(artifact.geometryHash).toBe(scene.geometryHash);
-        expect(artifact.status).toBe("ready");
+        expect(artifact.status).toBe("pass");
+        expect(artifact.source).toBe("p1_confirmed_scene_contract");
         expect(artifact.issues).toEqual([]);
         expect(artifact.createdAt).toBe(p1FixtureTimestamp);
       }
@@ -146,6 +149,64 @@ describe("P1 downstream integration hardening", () => {
     });
   });
 
+  it("uses confirmed floor height for white model room and wall height", () => {
+    const source = {
+      ...simpleRectangleHome,
+      globalParams: {
+        ...simpleRectangleHome.globalParams,
+        floorHeightMm: 3200
+      }
+    };
+    const canonical = createCanonicalFloorplanRevision(source, {
+      canonicalRevisionId: "canonical-downstream-floor-height",
+      version: 1,
+      confirmedAt: p1FixtureTimestamp
+    });
+    const scene = createSceneContractV02(canonical, {
+      sceneContractId: "scene-downstream-floor-height",
+      createdAt: p1FixtureTimestamp
+    });
+    const whiteModel = buildWhiteModelFromSceneContract(scene);
+
+    expect(scene.floorHeightMm).toBe(3200);
+    expect(whiteModel.rooms.every((room) => room.ceilingHeightMm === 3200)).toBe(true);
+    expect(whiteModel.walls.every((wall) => wall.heightMm === 3200)).toBe(true);
+  });
+
+  it("creates explicit affordance graph room geometry for openings, bay windows, balconies, and non-axis-aligned walls", () => {
+    const bayScene = createSceneContractV02(createCanonicalFloorplanRevision(homeWithBayWindow, {
+      canonicalRevisionId: "canonical-downstream-affordance-bay",
+      version: 1,
+      confirmedAt: p1FixtureTimestamp
+    }), {
+      sceneContractId: "scene-downstream-affordance-bay",
+      createdAt: p1FixtureTimestamp
+    });
+    const bayGraph = buildRoomAffordanceGraphFromSceneContract(bayScene);
+    const bayRoom = bayGraph.rooms.find((room) => room.roomId === "room-bay-living");
+
+    expect(bayRoom).toMatchObject({
+      status: "pass",
+      issues: [],
+      blockedOpeningIds: ["window-bay-1"]
+    });
+    expect(bayRoom?.usableWallSegments.some((segment) => segment.wallId === "wall-bay-north")).toBe(true);
+    expect(bayRoom?.blockedWallSegments).toContainEqual(expect.objectContaining({
+      wallId: "wall-bay-north",
+      sourceOpeningId: "window-bay-1",
+      reason: "bay_projection"
+    }));
+    expect(bayRoom?.forbiddenZones).toContainEqual(expect.objectContaining({
+      sourceOpeningId: "window-bay-1",
+      kind: "bay_projection"
+    }));
+    expect(bayRoom?.circulationZones.length).toBeGreaterThan(0);
+    expect(bayRoom?.anchorSurfaces).toContainEqual(expect.objectContaining({ type: "room_center" }));
+
+    const bundle = buildFullSpaceCoverageFromSceneContract(sceneFixture("affordance-fixtures"));
+    expect(bundle.affordanceGraph.rooms.every((room) => room.status === "pass")).toBe(true);
+  });
+
   it("rejects missing trace fields in downstream artifact contracts", () => {
     const scene = sceneFixture("contract-trace");
     const whiteModel = buildWhiteModelFromSceneContract(scene);
@@ -157,8 +218,34 @@ describe("P1 downstream integration hardening", () => {
     expect(P1WhiteModelSchema.safeParse({ ...whiteModel, geometryHash: undefined }).success).toBe(false);
     expect(P1RoomCameraPlanBatchSchema.safeParse({ ...cameraPlan, sceneContractId: undefined }).success).toBe(false);
     expect(P1RoomAffordanceGraphSchema.safeParse({ ...graph, canonicalRevisionId: undefined }).success).toBe(false);
-    expect(P1AnchorPlanSchema.safeParse({ ...anchorPlan, source: "scene_contract_v0.2" }).success).toBe(false);
+    expect(P1AnchorPlanSchema.safeParse({
+      ...anchorPlan,
+      anchors: anchorPlan.anchors.map(({ roomId: _roomId, ...anchor }) => anchor)
+    }).success).toBe(false);
     expect(P1DownstreamCoverageReportSchema.safeParse({ ...coverage, status: "active" }).success).toBe(false);
+  });
+
+  it("keeps LayoutIntent placeholders separate from geometry baseline artifacts", () => {
+    const scene = sceneFixture("layout-separation");
+    const before = buildFullSpaceCoverageFromSceneContract(scene);
+    const after = buildFullSpaceCoverageFromSceneContract(scene);
+    const serialized = JSON.stringify(after);
+
+    expect(after.whiteModel.geometryHash).toBe(scene.geometryHash);
+    expect(after.coverageReport.geometryHash).toBe(scene.geometryHash);
+    expect(after).toEqual(before);
+    expect(serialized).not.toContain(layoutBedroomUserBed.layoutIntentHash);
+    expect(serialized).not.toContain(layoutBedroomUserBed.placeholders[0]?.placeholderId);
+  });
+
+  it("does not generate downstream artifacts from invalid drafts", () => {
+    for (const draft of Object.values(invalidP1DraftFixtures)) {
+      expect(() => createCanonicalFloorplanRevision(draft, {
+        canonicalRevisionId: `canonical-downstream-invalid-${draft.homeId}`,
+        version: 1,
+        confirmedAt: p1FixtureTimestamp
+      })).toThrow();
+    }
   });
 
   it("rejects attempts to use a draft as a downstream SceneContract", () => {
@@ -182,7 +269,20 @@ describe("P1 downstream integration hardening", () => {
     expect(debug.downstreamBaselineSummary?.cameraPlan.roomPlanCount).toBe(debug.sceneContract?.rooms.length);
     expect(debug.downstreamBaselineSummary?.roomAffordanceGraph.roomCount).toBe(debug.sceneContract?.rooms.length);
     expect(debug.downstreamBaselineSummary?.anchorPlan.anchorCount).toBeGreaterThan(0);
-    expect(debug.downstreamBaselineSummary?.coverageReport.status).toBe("ready");
+    expect(debug.downstreamBaselineSummary?.coverageReport.status).toBe("pass");
+    expect(debug.hashComparison?.geometryHash).toBe(confirmed.geometryHash);
+    expect(debug.hashComparison?.layoutIntentHash).toBeUndefined();
+    expect(debug.hashComparison?.hashesAreSeparate).toBe(true);
+  });
+
+  it("omits downstream baseline summaries when no confirmed SceneContract exists", () => {
+    const context = apiContext({ [simpleRectangleHome.homeId]: simpleRectangleHome });
+    postP1Session(context, simpleRectangleHome.homeId);
+    const debug = getP1DebugPayload(context, simpleRectangleHome.homeId);
+
+    expect(debug.canonicalRevision).toBeUndefined();
+    expect(debug.sceneContract).toBeUndefined();
+    expect(debug.downstreamBaselineSummary).toBeUndefined();
   });
 });
 

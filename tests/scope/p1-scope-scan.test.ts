@@ -88,6 +88,41 @@ describe("P1 release-gate scope scan", () => {
     expect(hits).toEqual([]);
   });
 
+  it("keeps rebased downstream baselines out of product generation and layout mutation scope", () => {
+    const files = collectFiles([join(repoRoot, "packages", "scene", "src")]);
+    const forbidden = [
+      /Design Kernel/i,
+      /SchemeLite/i,
+      /CreativeRenderSpec/i,
+      /render provider/i,
+      /image provider/i,
+      /RenderVerificationReport/i,
+      /SKU matching/i,
+      /payment/i,
+      /PDF export/i,
+      /DWG/i,
+      /DXF/i,
+      /construction drawing/i,
+      /load-bearing/i,
+      /GB compliance/i,
+      /structural feasibility/i,
+      /chat editing/i,
+      /LayoutIntentRevision/,
+      /FurniturePlaceholder/,
+      /layoutIntentHash/,
+      /layout\.placeholder/,
+      /aiAutofillEnabled/
+    ];
+    const hits = files.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
+
   it("keeps layout intent out of canonical geometry and SceneContract geometry", () => {
     const spaceTruthFiles = [
       join(repoRoot, "packages", "contracts", "src", "p1-floorplan-adjustment.ts"),

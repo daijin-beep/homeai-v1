@@ -441,6 +441,7 @@ export const P1SceneContractV02Schema = z
     canonicalRevisionId: IdSchema,
     geometryHash: GeometryHashSchema,
     unit: MmUnitSchema,
+    floorHeightMm: z.number().positive(),
     rooms: z.array(P1SceneRoomSchema).min(1),
     walls: z.array(P1SceneWallSegmentSchema).min(1),
     openings: z.array(P1SceneOpeningSchema),
@@ -456,11 +457,12 @@ export const P1SceneContractV02Schema = z
   .strict();
 
 export const P1DownstreamArtifactSourceSchema = z.enum([
-  "scene_contract_v0.2",
-  "room_affordance_graph"
+  "p1_confirmed_scene_contract",
+  "fixture",
+  "test"
 ]);
 
-export const P1DownstreamArtifactStatusSchema = z.enum(["ready", "warning", "failed"]);
+export const P1DownstreamArtifactStatusSchema = z.enum(["pass", "warning", "fail"]);
 
 export const P1DownstreamIssueSchema = z
   .object({
@@ -503,13 +505,13 @@ const P1OpeningProxySchema = z
   })
   .strict();
 
-const P1RoomCoverageStatusSchema = z.enum(["covered", "warning", "failed"]);
+const P1RoomCoverageStatusSchema = z.enum(["pass", "warning", "fail"]);
 
 export const P1WhiteModelSchema = z
   .object({
     whiteModelId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("scene_contract_v0.2"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     readonly: z.literal(true),
     unit: MmUnitSchema,
@@ -543,7 +545,7 @@ export const P1ControlSceneSchema = z
   .object({
     controlSceneId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("scene_contract_v0.2"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     readonly: z.literal(true),
     unit: MmUnitSchema,
@@ -567,7 +569,7 @@ export const P1RoomCameraPlanBatchSchema = z
   .object({
     cameraPlanBatchId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("scene_contract_v0.2"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     unit: MmUnitSchema,
     roomPlans: z.array(
@@ -598,19 +600,72 @@ export const P1RoomAffordanceGraphSchema = z
   .object({
     affordanceGraphId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("scene_contract_v0.2"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     rooms: z.array(
       z
         .object({
           roomId: IdSchema,
           roomType: P1RoomTypeSchema,
+          status: P1RoomCoverageStatusSchema,
+          issues: z.array(P1DownstreamIssueSchema),
           usableAreaMm2: z.number().nonnegative(),
           usableWallSegmentIds: z.array(IdSchema),
+          usableWallSegments: z.array(
+            z
+              .object({
+                segmentId: IdSchema,
+                wallId: IdSchema,
+                start: Point2DSchema,
+                end: Point2DSchema,
+                lengthMm: z.number().nonnegative()
+              })
+              .strict()
+          ),
+          blockedWallSegments: z.array(
+            z
+              .object({
+                segmentId: IdSchema,
+                wallId: IdSchema,
+                sourceOpeningId: IdSchema,
+                reason: z.enum(["door_clearance", "window_clearance", "bay_projection"])
+              })
+              .strict()
+          ),
           blockedOpeningIds: z.array(IdSchema),
           forbiddenZoneIds: z.array(IdSchema),
+          forbiddenZones: z.array(
+            z
+              .object({
+                zoneId: IdSchema,
+                sourceOpeningId: IdSchema,
+                kind: z.enum(["door_clearance", "window_clearance", "bay_projection"]),
+                polygon: z.array(Point2DSchema).min(4)
+              })
+              .strict()
+          ),
           circulationHints: z.array(z.string().min(1)),
+          circulationZones: z.array(
+            z
+              .object({
+                zoneId: IdSchema,
+                kind: z.enum(["opening_clearance", "room_path"]),
+                polygon: z.array(Point2DSchema).min(4)
+              })
+              .strict()
+          ),
           candidateAnchorIds: z.array(IdSchema),
+          anchorSurfaces: z.array(
+            z
+              .object({
+                surfaceId: IdSchema,
+                type: z.enum(["wall", "window", "room_center", "corner", "opening_adjacent"]),
+                wallId: IdSchema.optional(),
+                openingId: IdSchema.optional(),
+                position: Point2DSchema
+              })
+              .strict()
+          ),
           candidateAnchors: z.array(
             z
               .object({
@@ -633,7 +688,7 @@ export const P1AnchorPlanSchema = z
     anchorPlanId: IdSchema,
     affordanceGraphId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("room_affordance_graph"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     anchors: z.array(
       z
@@ -654,7 +709,7 @@ export const P1DownstreamCoverageReportSchema = z
   .object({
     coverageReportId: IdSchema,
     ...P1TraceableDownstreamFields,
-    source: z.literal("scene_contract_v0.2"),
+    source: z.literal("p1_confirmed_scene_contract"),
     status: P1DownstreamArtifactStatusSchema,
     roomCoverage: z.array(
       z

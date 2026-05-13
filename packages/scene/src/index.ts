@@ -20,7 +20,7 @@ import {
   type P1WhiteModel,
   type Point2D
 } from "@homeai/contracts";
-import { computeFloorplanBBox } from "@homeai/geometry";
+import { computeFloorplanBBox, computeSegmentLength } from "@homeai/geometry";
 
 type SceneBuildOptions = {
   expectedGeometryHash?: GeometryHash;
@@ -111,6 +111,7 @@ export function createSceneContractV02(
     canonicalRevisionId: canonicalRevision.canonicalRevisionId,
     geometryHash: canonicalRevision.geometryHash,
     unit: "mm" as const,
+    floorHeightMm: canonicalRevision.globalParams.floorHeightMm ?? 2800,
     rooms: canonicalRevision.rooms.map((room) => ({
       roomId: room.roomId,
       roomType: room.roomType,
@@ -147,8 +148,8 @@ export function buildWhiteModelFromSceneContract(
     homeId: scene.homeId,
     canonicalRevisionId: scene.canonicalRevisionId,
     geometryHash: scene.geometryHash,
-    source: "scene_contract_v0.2" as const,
-    status: "ready" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: "pass" as const,
     issues: [],
     createdAt: options.createdAt ?? scene.createdAt,
     readonly: true as const,
@@ -158,14 +159,14 @@ export function buildWhiteModelFromSceneContract(
       roomType: room.roomType,
       floorPolygon: room.polygon.map(clonePoint),
       floorElevationMm: 0,
-      ceilingHeightMm: options.ceilingHeightMm ?? 2800
+      ceilingHeightMm: options.ceilingHeightMm ?? scene.floorHeightMm
     })),
     walls: scene.walls.map((wall) => ({
       wallId: wall.wallId,
       start: clonePoint(wall.start),
       end: clonePoint(wall.end),
       thicknessMm: wall.thicknessMm,
-      heightMm: options.wallHeightMm ?? 2800
+      heightMm: options.wallHeightMm ?? scene.floorHeightMm
     })),
     openingProxies: scene.openings.map(toOpeningProxy)
   };
@@ -184,8 +185,8 @@ export function buildControlSceneFromSceneContract(
     homeId: scene.homeId,
     canonicalRevisionId: scene.canonicalRevisionId,
     geometryHash: scene.geometryHash,
-    source: "scene_contract_v0.2" as const,
-    status: "ready" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: "pass" as const,
     issues: [],
     createdAt: options.createdAt ?? scene.createdAt,
     readonly: true as const,
@@ -195,7 +196,7 @@ export function buildControlSceneFromSceneContract(
       roomType: room.roomType,
       boundary: room.polygon.map(clonePoint),
       center: polygonCenter(room.polygon),
-      status: "covered" as const
+      status: "pass" as const
     })),
     walls: scene.walls.map((wall) => ({
       wallId: wall.wallId,
@@ -224,8 +225,8 @@ export function buildCameraPlanFromSceneContract(
     homeId: scene.homeId,
     canonicalRevisionId: scene.canonicalRevisionId,
     geometryHash: scene.geometryHash,
-    source: "scene_contract_v0.2" as const,
-    status: issues.length === 0 ? "ready" as const : "failed" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: issues.length === 0 ? "pass" as const : "fail" as const,
     issues,
     createdAt: options.createdAt ?? scene.createdAt,
     unit: "mm" as const,
@@ -233,7 +234,7 @@ export function buildCameraPlanFromSceneContract(
       const center = polygonCenter(room.polygon);
       return {
         roomId: room.roomId,
-        status: "covered" as const,
+        status: "pass" as const,
         issues: [],
         cameras: [
           {
@@ -264,19 +265,59 @@ export function buildRoomAffordanceGraphFromSceneContract(
   options: AffordanceGraphOptions = {}
 ): P1RoomAffordanceGraph {
   const scene = verifySceneContractForDownstream(sceneContract, "RoomAffordanceGraph", options.expectedGeometryHash);
-  const wallIds = scene.walls.map((wall) => wall.wallId).sort();
+  const usableWallSegments = scene.walls
+    .map((wall) => ({
+      segmentId: `usable-${wall.wallId}`,
+      wallId: wall.wallId,
+      start: clonePoint(wall.start),
+      end: clonePoint(wall.end),
+      lengthMm: computeSegmentLength(wall)
+    }))
+    .sort((a, b) => a.segmentId.localeCompare(b.segmentId));
+  const wallIds = usableWallSegments.map((wall) => wall.wallId);
   const blockedOpeningIds = scene.openings
     .filter((opening) => scene.walls.some((wall) => wall.wallId === opening.wallId))
     .map((opening) => opening.openingId)
     .sort();
+  const blockedWallSegments = scene.openings
+    .filter((opening) => scene.walls.some((wall) => wall.wallId === opening.wallId))
+    .map((opening) => ({
+      segmentId: `blocked-${opening.wallId}-${opening.openingId}`,
+      wallId: opening.wallId,
+      sourceOpeningId: opening.openingId,
+      reason: opening.type === "door"
+        ? "door_clearance" as const
+        : opening.windowKind === "bay"
+          ? "bay_projection" as const
+          : "window_clearance" as const
+    }))
+    .sort((a, b) => a.segmentId.localeCompare(b.segmentId));
+  const forbiddenZones = scene.openings
+    .filter((opening) => scene.walls.some((wall) => wall.wallId === opening.wallId))
+    .map((opening) => ({
+      zoneId: `forbidden-opening-${opening.openingId}`,
+      sourceOpeningId: opening.openingId,
+      kind: opening.type === "door"
+        ? "door_clearance" as const
+        : opening.windowKind === "bay"
+          ? "bay_projection" as const
+          : "window_clearance" as const,
+      polygon: clearancePolygonForOpening(scene, opening)
+    }))
+    .sort((a, b) => a.zoneId.localeCompare(b.zoneId));
+  const circulationZones = forbiddenZones.map((zone) => ({
+    zoneId: `circulation-${zone.zoneId}`,
+    kind: "opening_clearance" as const,
+    polygon: zone.polygon.map(clonePoint)
+  }));
   const graph = {
     affordanceGraphId: options.affordanceGraphId ?? `affordance-${scene.sceneContractId}`,
     sceneContractId: scene.sceneContractId,
     homeId: scene.homeId,
     canonicalRevisionId: scene.canonicalRevisionId,
     geometryHash: scene.geometryHash,
-    source: "scene_contract_v0.2" as const,
-    status: "ready" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: "pass" as const,
     issues: [],
     createdAt: options.createdAt ?? scene.createdAt,
     rooms: scene.rooms.map((room) => {
@@ -284,12 +325,25 @@ export function buildRoomAffordanceGraphFromSceneContract(
       return {
         roomId: room.roomId,
         roomType: room.roomType,
+        status: "pass" as const,
+        issues: [],
         usableAreaMm2: polygonArea(room.polygon),
         usableWallSegmentIds: wallIds,
+        usableWallSegments,
+        blockedWallSegments,
         blockedOpeningIds,
         forbiddenZoneIds: blockedOpeningIds.map((openingId) => `forbidden-opening-${openingId}`),
+        forbiddenZones,
         circulationHints: blockedOpeningIds.length === 0 ? [] : ["keep door/window clearance zones open"],
+        circulationZones,
         candidateAnchorIds: [anchorId],
+        anchorSurfaces: [
+          {
+            surfaceId: `surface-${room.roomId}-center`,
+            type: "room_center" as const,
+            position: polygonCenter(room.polygon)
+          }
+        ],
         candidateAnchors: [
           {
             anchorId,
@@ -342,8 +396,8 @@ export function buildAnchorPlanFromAffordanceGraph(
     homeId: parsedGraph.homeId,
     canonicalRevisionId: parsedGraph.canonicalRevisionId,
     geometryHash: parsedGraph.geometryHash,
-    source: "room_affordance_graph" as const,
-    status: missingAnchorIssues.length === 0 ? "ready" as const : "failed" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: missingAnchorIssues.length === 0 ? "pass" as const : "fail" as const,
     issues: missingAnchorIssues,
     createdAt: options.createdAt ?? parsedGraph.createdAt,
     anchors
@@ -404,7 +458,7 @@ export function buildFullSpaceCoverageFromSceneContract(
       hasCameraPlan,
       hasAffordanceGraph,
       hasAnchorPlan,
-      status: issues.length === 0 ? "covered" as const : "failed" as const,
+      status: issues.length === 0 ? "pass" as const : "fail" as const,
       issues
     };
   });
@@ -415,8 +469,8 @@ export function buildFullSpaceCoverageFromSceneContract(
     homeId: scene.homeId,
     canonicalRevisionId: scene.canonicalRevisionId,
     geometryHash: scene.geometryHash,
-    source: "scene_contract_v0.2" as const,
-    status: reportIssues.length === 0 ? "ready" as const : "failed" as const,
+    source: "p1_confirmed_scene_contract" as const,
+    status: reportIssues.length === 0 ? "pass" as const : "fail" as const,
     issues: reportIssues,
     createdAt,
     roomCoverage
@@ -530,6 +584,54 @@ function polygonArea(points: readonly Point2D[]): number {
     sum += a.x * b.y - b.x * a.y;
   }
   return Math.abs(sum / 2);
+}
+
+function clearancePolygonForOpening(scene: P1SceneContractV02, opening: P1SceneOpening): Point2D[] {
+  const wall = scene.walls.find((candidate) => candidate.wallId === opening.wallId);
+  if (wall === undefined) {
+    return [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+      { x: 0, y: 1 },
+      { x: 0, y: 0 }
+    ];
+  }
+
+  const wallLength = Math.max(computeSegmentLength(wall), 1);
+  const tangent = {
+    x: (wall.end.x - wall.start.x) / wallLength,
+    y: (wall.end.y - wall.start.y) / wallLength
+  };
+  const normal = { x: -tangent.y, y: tangent.x };
+  const center = {
+    x: wall.start.x + (wall.end.x - wall.start.x) * opening.positionOnWall,
+    y: wall.start.y + (wall.end.y - wall.start.y) * opening.positionOnWall
+  };
+  const halfWidth = opening.widthMm / 2 + 200;
+  const depth = opening.type === "window" && opening.windowKind === "bay"
+    ? (opening.projectionDepthMm ?? 500) + 300
+    : 700;
+  const a = {
+    x: center.x - tangent.x * halfWidth,
+    y: center.y - tangent.y * halfWidth
+  };
+  const b = {
+    x: center.x + tangent.x * halfWidth,
+    y: center.y + tangent.y * halfWidth
+  };
+  const c = {
+    x: b.x + normal.x * depth,
+    y: b.y + normal.y * depth
+  };
+  const d = {
+    x: a.x + normal.x * depth,
+    y: a.y + normal.y * depth
+  };
+  return [a, b, c, d, a].map((point) => ({
+    x: Math.round(point.x),
+    y: Math.round(point.y)
+  }));
 }
 
 function downstreamIssue(

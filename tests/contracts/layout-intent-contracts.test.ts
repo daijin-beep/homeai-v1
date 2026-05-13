@@ -60,20 +60,33 @@ describe("Layout Intent contracts", () => {
       homeId: layoutBedroomUserBed.homeId,
       canonicalRevisionId: layoutBedroomUserBed.canonicalRevisionId,
       geometryHash: layoutFixtureGeometryHash,
-      source: "scene_contract_v0.2",
-      status: "ready",
+      source: "p1_confirmed_scene_contract",
+      status: "pass",
       issues: [],
       createdAt: layoutBedroomUserBed.createdAt,
       rooms: [
         {
           roomId: bedroomUserBedPlaceholder.roomId,
           roomType: "living_room",
+          status: "pass",
+          issues: [],
           usableAreaMm2: 1000000,
           usableWallSegmentIds: [],
+          usableWallSegments: [],
+          blockedWallSegments: [],
           blockedOpeningIds: [],
           forbiddenZoneIds: [],
+          forbiddenZones: [],
           circulationHints: [],
+          circulationZones: [],
           candidateAnchorIds: ["anchor-layout-test"],
+          anchorSurfaces: [
+            {
+              surfaceId: "surface-layout-test",
+              type: "room_center",
+              position: bedroomUserBedPlaceholder.center
+            }
+          ],
           candidateAnchors: [
             {
               anchorId: "anchor-layout-test",
