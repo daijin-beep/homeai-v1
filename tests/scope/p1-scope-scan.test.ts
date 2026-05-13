@@ -47,11 +47,15 @@ describe("P1 release-gate scope scan", () => {
       /@homeai\/floorplan-parser/,
       /createInMemoryP1Repositories/,
       /Repository/,
+      /LayoutIntentRepository/,
+      /InMemory/,
       /confirmFloorplanDraft/,
       /createCanonicalFloorplanRevision/,
       /runSpaceTruthGate/,
       /buildSceneContract/,
-      /createSceneContractV02/
+      /createSceneContractV02/,
+      /createInitialLayoutIntent/,
+      /buildLayoutIntentContract/
     ];
     const hits = files.flatMap((file) => {
       const text = readFileSync(file, "utf8");
