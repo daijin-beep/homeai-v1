@@ -1,0 +1,8 @@
+{
+  "creativeRenderSpecStatus": "proposed",
+  "galleryAdmissionPolicyStatus": "pending",
+  "providerPolicyStatus": "pending",
+  "realProviderAllowed": false,
+  "mockProviderAllowed": true,
+  "capturedAt": "2026-05-13T00:00:00+00:00"
+}
