@@ -222,41 +222,7 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadDraft() {
-      setIsLoading(true);
-      setApiError(null);
-      try {
-        const session = await startP1Session(homeId);
-        if (cancelled) {
-          return;
-        }
-        setDraftRevisionId(session.draftRevisionId);
-        setIsAdvancedSettingsOpen(false);
-        setReentryState(
-          session.activeCanonicalRevisionId !== undefined && session.geometryHash !== undefined
-            ? {
-                activeCanonicalRevisionId: session.activeCanonicalRevisionId,
-                previousGeometryHash: session.geometryHash
-              }
-            : null
-        );
-        const response = await fetchP1Draft(session.draftRevisionId);
-        if (cancelled) {
-          return;
-        }
-        setCurrentDraft(response.draft);
-        setValidationState(response.validation);
-      } catch (error) {
-        if (!cancelled) {
-          setApiError(error instanceof Error ? error.message : "无法加载户型草稿");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-    void loadDraft();
+    void loadDraftSession(() => cancelled);
     return () => {
       cancelled = true;
     };
@@ -393,9 +359,59 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
       }
       return nextDraft;
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "操作未保存，已保留服务器草稿");
+      if (isDraftNotFoundError(error)) {
+        await loadDraftSession(() => false);
+        setApiError("草稿会话已刷新，请重试刚才的操作。");
+      } else {
+        setApiError(error instanceof Error ? error.message : "操作未保存，已保留服务器草稿");
+      }
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function loadDraftSession(isCancelled: () => boolean, retried = false): Promise<void> {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      const session = await startP1Session(homeId);
+      if (isCancelled()) {
+        return;
+      }
+      setDraftRevisionId(session.draftRevisionId);
+      setIsAdvancedSettingsOpen(false);
+      setLayoutIntentRevisionId(null);
+      setLayoutIntent(null);
+      setLayoutIntentHash(null);
+      setLayoutIntentValidation(null);
+      setLayoutIntentContractId(null);
+      setSelectedPlaceholderId(null);
+      setReentryState(
+        session.activeCanonicalRevisionId !== undefined && session.geometryHash !== undefined
+          ? {
+              activeCanonicalRevisionId: session.activeCanonicalRevisionId,
+              previousGeometryHash: session.geometryHash
+            }
+          : null
+      );
+      const response = await fetchP1Draft(session.draftRevisionId);
+      if (isCancelled()) {
+        return;
+      }
+      setCurrentDraft(response.draft);
+      setValidationState(response.validation);
+    } catch (error) {
+      if (isDraftNotFoundError(error) && !retried) {
+        await loadDraftSession(isCancelled, true);
+        return;
+      }
+      if (!isCancelled()) {
+        setApiError(error instanceof Error ? error.message : "无法加载户型草稿");
+      }
+    } finally {
+      if (!isCancelled()) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -1987,6 +2003,10 @@ function layoutNeutralIssueCopy(issue: LayoutIntentValidationIssue): string {
     return "该家具占位尺寸超出系统可处理范围";
   }
   return issue.message;
+}
+
+function isDraftNotFoundError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith("Draft not found:");
 }
 
 function nearestExteriorWall(draft: FloorplanDraftRevision, point: Point2D): DraftWallSegment | undefined {

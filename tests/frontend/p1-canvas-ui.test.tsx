@@ -396,6 +396,23 @@ describe("P1 Canvas normal mode UI", () => {
     expect(screen.queryByTestId("reentry-edit-notice")).not.toBeInTheDocument();
   });
 
+  it("recovers from stale in-memory draft sessions after dev-server reload", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome, {
+      failNextPatch: true,
+      failNextPatchMessage: "Draft not found: draft-session-demo-home-stale"
+    });
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+    expect(scenario.sessionCalls).toBe(1);
+
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    fireEvent.click(screen.getByText("删除墙"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("草稿会话已刷新，请重试刚才的操作。");
+    expect(scenario.sessionCalls).toBe(2);
+    expect(screen.getByTestId("wall-wall-simple-east")).toBeInTheDocument();
+  });
+
   it("confirm displays unchanged and changed geometryHash invalidation summaries from API", async () => {
     const unchanged = mockP1Fetch(simpleRectangleHome, {
       session: {
@@ -603,6 +620,7 @@ function mockP1Fetch(
     validation?: DraftValidationState;
     layoutValidation?: LayoutIntentValidationState;
     failNextPatch?: boolean;
+    failNextPatchMessage?: string;
     failNextLayoutPatch?: boolean;
     session?: { activeCanonicalRevisionId: string; geometryHash: string };
     confirmChanged?: boolean;
@@ -615,6 +633,7 @@ function mockP1Fetch(
     layoutValidationOverride: options.layoutValidation,
     calls: [] as FetchCall[],
     layoutCalls: [] as LayoutFetchCall[],
+    sessionCalls: 0,
     confirmCalls: 0,
     layoutConfirmCalls: 0,
     failNextPatch: options.failNextPatch ?? false,
@@ -710,6 +729,7 @@ function mockP1Fetch(
       return jsonResponse(scenario.layoutIntent);
     }
     if (url.includes("/session")) {
+      scenario.sessionCalls += 1;
       return jsonResponse({
         draftRevisionId: scenario.draft.draftRevisionId,
         source: scenario.draft.source,
@@ -722,7 +742,7 @@ function mockP1Fetch(
       scenario.calls.push({ url, init, operations: body.operations });
       if (scenario.failNextPatch) {
         scenario.failNextPatch = false;
-        return jsonResponse({ error: "patch failed" }, 400);
+        return jsonResponse({ error: options.failNextPatchMessage ?? "patch failed" }, 400);
       }
       scenario.draft = applyFloorplanOperations(scenario.draft, body.operations);
       return jsonResponse({
