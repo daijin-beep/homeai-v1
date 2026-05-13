@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "next dev",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@homeai/contracts": "workspace:*",
     "@homeai/floorplan-parser": "workspace:*",
     "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@types/react": "latest",

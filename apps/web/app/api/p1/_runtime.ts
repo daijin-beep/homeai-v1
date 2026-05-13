@@ -91,7 +91,15 @@ const apiContext: P1ApiContext = {
 };
 
 export async function handlePostSession(request: Request, homeId: string): Promise<Response> {
-  return toResponse(async () => postP1Session(apiContext, homeId, await readOptionalDraft(request)));
+  return toResponse(async () => {
+    const input = await readOptionalDraft(request);
+    const fallbackDraft = apiContext.fixtureDrafts?.[homeId] === undefined ? draftForHome(homeId) : undefined;
+    return postP1Session(
+      apiContext,
+      homeId,
+      input.draft !== undefined ? { draft: input.draft } : fallbackDraft !== undefined ? { draft: fallbackDraft } : {}
+    );
+  });
 }
 
 export function handleGetDraft(draftRevisionId: string): Promise<Response> {
@@ -164,4 +172,29 @@ function wall(wallId: string, x1: number, y1: number, x2: number, y2: number) {
     kind: "exterior" as const,
     source: "fixture" as const
   };
+}
+
+function draftForHome(homeId: string): FloorplanDraftRevision {
+  const draft = {
+    ...demoDraft,
+    draftRevisionId: `draft-api-${homeId}`,
+    homeId,
+    walls: demoDraft.walls.map((wall) => ({ ...wall, start: { ...wall.start }, end: { ...wall.end } })),
+    openings: demoDraft.openings.map((opening) => ({ ...opening })),
+    rooms: demoDraft.rooms.map((room) => ({
+      ...room,
+      polygon: room.polygon.map((point) => ({ ...point })),
+      ...(room.labelPosition === undefined ? {} : { labelPosition: { ...room.labelPosition } })
+    })),
+    operationLog: [],
+  };
+  return demoDraft.validation === undefined
+    ? draft
+    : {
+        ...draft,
+        validation: {
+          ...demoDraft.validation,
+          issues: demoDraft.validation.issues.map((issue) => ({ ...issue }))
+        }
+      };
 }

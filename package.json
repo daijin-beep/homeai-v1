@@ -10,7 +10,13 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@testing-library/dom": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
     "@types/node": "latest",
+    "jsdom": "latest",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "typescript": "latest",
     "vitest": "latest"
   }
