@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@homeai/contracts": "workspace:*",
+    "@homeai/creative-render-spec": "workspace:*",
     "@homeai/design-kernel": "workspace:*",
     "@homeai/floorplan-parser": "workspace:*",
     "@homeai/scheme-page": "workspace:*",
