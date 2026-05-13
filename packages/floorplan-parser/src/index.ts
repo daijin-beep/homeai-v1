@@ -41,6 +41,7 @@ export { computeGeometryHash };
 export * from "./api.js";
 export * from "./events.js";
 export * from "./invalidation.js";
+export * from "./layout-intent.js";
 export * from "./repositories.js";
 
 export const P1_VALUE_BOUNDS = {

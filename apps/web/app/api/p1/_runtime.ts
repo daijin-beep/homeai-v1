@@ -4,7 +4,13 @@ import {
   getP1DebugPayload,
   getP1Draft,
   getP1SceneContract,
+  getLayoutIntentContract,
+  getLayoutIntentRevision,
+  patchLayoutIntentOperations,
   patchP1DraftOperations,
+  postLayoutIntentConfirm,
+  postLayoutIntentSession,
+  postLayoutIntentValidate,
   postP1ConfirmDraft,
   postP1RecomputeBoundaries,
   postP1Session,
@@ -138,6 +144,39 @@ export function handleGetSceneContract(sceneContractId: string): Promise<Respons
 
 export function handleGetDebug(homeId: string): Promise<Response> {
   return toResponse(() => getP1DebugPayload(apiContext, homeId));
+}
+
+export function handlePostLayoutIntentSession(homeId: string): Promise<Response> {
+  return toResponse(() => postLayoutIntentSession(apiContext, homeId));
+}
+
+export function handleGetLayoutIntent(layoutIntentRevisionId: string): Promise<Response> {
+  return toResponse(() => getLayoutIntentRevision(apiContext, layoutIntentRevisionId));
+}
+
+export async function handlePatchLayoutIntentOperations(
+  request: Request,
+  layoutIntentRevisionId: string
+): Promise<Response> {
+  return toResponse(async () => patchLayoutIntentOperations(apiContext, layoutIntentRevisionId, await request.json()));
+}
+
+export function handlePostLayoutIntentValidate(layoutIntentRevisionId: string): Promise<Response> {
+  return toResponse(() => postLayoutIntentValidate(apiContext, layoutIntentRevisionId));
+}
+
+export function handlePostLayoutIntentConfirm(layoutIntentRevisionId: string): Promise<Response> {
+  return toResponse(() => {
+    const result = postLayoutIntentConfirm(apiContext, layoutIntentRevisionId);
+    if (!result.ok) {
+      return Response.json(result, { status: 422 });
+    }
+    return result;
+  });
+}
+
+export function handleGetLayoutIntentContract(layoutIntentRevisionId: string): Promise<Response> {
+  return toResponse(() => getLayoutIntentContract(apiContext, layoutIntentRevisionId));
 }
 
 async function readOptionalDraft(request: Request): Promise<{ draft?: FloorplanDraftRevision }> {

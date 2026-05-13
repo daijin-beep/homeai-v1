@@ -3,6 +3,10 @@ import {
   FloorplanDraftRevisionSchema,
   FloorplanEditOperationSchema,
   GeometryDependencyRecordSchema,
+  LayoutIntentContractSchema,
+  LayoutIntentEventSchema,
+  LayoutIntentOperationSchema,
+  LayoutIntentRevisionSchema,
   P1EventSchema,
   P1SceneContractV02Schema,
   type BalconyMeta,
@@ -11,6 +15,10 @@ import {
   type FloorplanDraftRevision,
   type FloorplanEditOperation,
   type GeometryDependencyRecord,
+  type LayoutIntentContract,
+  type LayoutIntentEvent,
+  type LayoutIntentOperation,
+  type LayoutIntentRevision,
   type P1Event,
   type P1SceneContractV02,
   type Point2D
@@ -62,12 +70,35 @@ export interface P1EventRepository {
   listEventsByDraftRevision(draftRevisionId: string): P1Event[];
 }
 
+export interface LayoutIntentRepository {
+  createLayoutIntentRevision(layoutIntentRevision: LayoutIntentRevision): LayoutIntentRevision;
+  getLayoutIntentRevision(layoutIntentRevisionId: string): LayoutIntentRevision | undefined;
+  getActiveLayoutIntentForHome(homeId: string): LayoutIntentRevision | undefined;
+  getActiveLayoutIntentForCanonicalRevision(canonicalRevisionId: string): LayoutIntentRevision | undefined;
+  setActiveLayoutIntentForHome(homeId: string, layoutIntentRevisionId: string): void;
+  archiveLayoutIntentRevision(layoutIntentRevisionId: string, archivedAt: string): void;
+  updateLayoutIntentRevision(layoutIntentRevision: LayoutIntentRevision): LayoutIntentRevision;
+  appendOperation(layoutIntentRevisionId: string, operation: LayoutIntentOperation): LayoutIntentRevision;
+  listOperations(layoutIntentRevisionId: string): LayoutIntentOperation[];
+  createLayoutIntentContract(layoutIntentContract: LayoutIntentContract): LayoutIntentContract;
+  getLayoutIntentContract(layoutIntentContractId: string): LayoutIntentContract | undefined;
+  getActiveLayoutIntentContractForRevision(layoutIntentRevisionId: string): LayoutIntentContract | undefined;
+}
+
+export interface LayoutIntentEventRepository {
+  appendLayoutIntentEvent(event: LayoutIntentEvent): LayoutIntentEvent;
+  listLayoutIntentEventsByHome(homeId: string): LayoutIntentEvent[];
+  listLayoutIntentEventsByRevision(layoutIntentRevisionId: string): LayoutIntentEvent[];
+}
+
 export type P1RepositorySet = {
   drafts: FloorplanDraftRepository;
   canonical: CanonicalFloorplanRepository;
   sceneContracts: SceneContractRepository;
   geometryDependencies: GeometryDependencyRepository;
   events: P1EventRepository;
+  layoutIntents: LayoutIntentRepository;
+  layoutEvents: LayoutIntentEventRepository;
 };
 
 export function createInMemoryP1Repositories(): P1RepositorySet {
@@ -77,7 +108,9 @@ export function createInMemoryP1Repositories(): P1RepositorySet {
     canonical,
     sceneContracts: new InMemorySceneContractRepository(),
     geometryDependencies: new InMemoryGeometryDependencyRepository(),
-    events: new InMemoryP1EventRepository()
+    events: new InMemoryP1EventRepository(),
+    layoutIntents: new InMemoryLayoutIntentRepository(),
+    layoutEvents: new InMemoryLayoutIntentEventRepository()
   };
 }
 
@@ -274,6 +307,140 @@ export class InMemoryP1EventRepository implements P1EventRepository {
   listEventsByDraftRevision(draftRevisionId: string): P1Event[] {
     return this.#events
       .filter((event) => event.draftRevisionId === draftRevisionId)
+      .map(clone)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.eventId.localeCompare(b.eventId));
+  }
+}
+
+export class InMemoryLayoutIntentRepository implements LayoutIntentRepository {
+  readonly #layoutIntentRevisions = new Map<string, LayoutIntentRevision>();
+  readonly #activeByHome = new Map<string, string>();
+  readonly #activeByCanonicalRevision = new Map<string, string>();
+  readonly #operations = new Map<string, LayoutIntentOperation[]>();
+  readonly #contracts = new Map<string, LayoutIntentContract>();
+  readonly #activeContractByRevision = new Map<string, string>();
+
+  createLayoutIntentRevision(layoutIntentRevision: LayoutIntentRevision): LayoutIntentRevision {
+    const parsed = LayoutIntentRevisionSchema.parse(clone(layoutIntentRevision));
+    this.#layoutIntentRevisions.set(parsed.layoutIntentRevisionId, deepFreeze(clone(parsed)));
+    this.#operations.set(parsed.layoutIntentRevisionId, []);
+    this.#activeByHome.set(parsed.homeId, parsed.layoutIntentRevisionId);
+    this.#activeByCanonicalRevision.set(parsed.canonicalRevisionId, parsed.layoutIntentRevisionId);
+    return deepFreeze(clone(parsed));
+  }
+
+  getLayoutIntentRevision(layoutIntentRevisionId: string): LayoutIntentRevision | undefined {
+    const revision = this.#layoutIntentRevisions.get(layoutIntentRevisionId);
+    return revision === undefined ? undefined : deepFreeze(clone(revision));
+  }
+
+  getActiveLayoutIntentForHome(homeId: string): LayoutIntentRevision | undefined {
+    const revisionId = this.#activeByHome.get(homeId);
+    return revisionId === undefined ? undefined : this.getLayoutIntentRevision(revisionId);
+  }
+
+  getActiveLayoutIntentForCanonicalRevision(canonicalRevisionId: string): LayoutIntentRevision | undefined {
+    const revisionId = this.#activeByCanonicalRevision.get(canonicalRevisionId);
+    return revisionId === undefined ? undefined : this.getLayoutIntentRevision(revisionId);
+  }
+
+  setActiveLayoutIntentForHome(homeId: string, layoutIntentRevisionId: string): void {
+    const revision = this.#layoutIntentRevisions.get(layoutIntentRevisionId);
+    if (revision === undefined || revision.homeId !== homeId || revision.archivedAt !== undefined) {
+      throw new Error(`Layout intent revision not found for home: ${layoutIntentRevisionId}`);
+    }
+    this.#activeByHome.set(homeId, layoutIntentRevisionId);
+    this.#activeByCanonicalRevision.set(revision.canonicalRevisionId, layoutIntentRevisionId);
+  }
+
+  archiveLayoutIntentRevision(layoutIntentRevisionId: string, archivedAt: string): void {
+    const existing = this.#layoutIntentRevisions.get(layoutIntentRevisionId);
+    if (existing === undefined) {
+      throw new Error(`Layout intent revision not found: ${layoutIntentRevisionId}`);
+    }
+    const archived = LayoutIntentRevisionSchema.parse({
+      ...clone(existing),
+      archivedAt,
+      updatedAt: archivedAt
+    });
+    this.#layoutIntentRevisions.set(layoutIntentRevisionId, deepFreeze(clone(archived)));
+    for (const [homeId, activeRevisionId] of this.#activeByHome.entries()) {
+      if (activeRevisionId === layoutIntentRevisionId) {
+        this.#activeByHome.delete(homeId);
+      }
+    }
+    for (const [canonicalRevisionId, activeRevisionId] of this.#activeByCanonicalRevision.entries()) {
+      if (activeRevisionId === layoutIntentRevisionId) {
+        this.#activeByCanonicalRevision.delete(canonicalRevisionId);
+      }
+    }
+  }
+
+  updateLayoutIntentRevision(layoutIntentRevision: LayoutIntentRevision): LayoutIntentRevision {
+    const parsed = LayoutIntentRevisionSchema.parse(clone(layoutIntentRevision));
+    if (!this.#layoutIntentRevisions.has(parsed.layoutIntentRevisionId)) {
+      throw new Error(`Layout intent revision not found: ${parsed.layoutIntentRevisionId}`);
+    }
+    this.#layoutIntentRevisions.set(parsed.layoutIntentRevisionId, deepFreeze(clone(parsed)));
+    if (parsed.archivedAt === undefined) {
+      this.#activeByHome.set(parsed.homeId, parsed.layoutIntentRevisionId);
+      this.#activeByCanonicalRevision.set(parsed.canonicalRevisionId, parsed.layoutIntentRevisionId);
+    }
+    return deepFreeze(clone(parsed));
+  }
+
+  appendOperation(layoutIntentRevisionId: string, operation: LayoutIntentOperation): LayoutIntentRevision {
+    const revision = this.#layoutIntentRevisions.get(layoutIntentRevisionId);
+    if (revision === undefined) {
+      throw new Error(`Layout intent revision not found: ${layoutIntentRevisionId}`);
+    }
+    const parsedOperation = LayoutIntentOperationSchema.parse(operation);
+    const operations = this.#operations.get(layoutIntentRevisionId) ?? [];
+    this.#operations.set(layoutIntentRevisionId, [...operations, parsedOperation]);
+    return deepFreeze(clone(revision));
+  }
+
+  listOperations(layoutIntentRevisionId: string): LayoutIntentOperation[] {
+    return clone(this.#operations.get(layoutIntentRevisionId) ?? []);
+  }
+
+  createLayoutIntentContract(layoutIntentContract: LayoutIntentContract): LayoutIntentContract {
+    const parsed = LayoutIntentContractSchema.parse(clone(layoutIntentContract));
+    this.#contracts.set(parsed.layoutIntentContractId, deepFreeze(clone(parsed)));
+    this.#activeContractByRevision.set(parsed.layoutIntentRevisionId, parsed.layoutIntentContractId);
+    return deepFreeze(clone(parsed));
+  }
+
+  getLayoutIntentContract(layoutIntentContractId: string): LayoutIntentContract | undefined {
+    const contract = this.#contracts.get(layoutIntentContractId);
+    return contract === undefined ? undefined : deepFreeze(clone(contract));
+  }
+
+  getActiveLayoutIntentContractForRevision(layoutIntentRevisionId: string): LayoutIntentContract | undefined {
+    const contractId = this.#activeContractByRevision.get(layoutIntentRevisionId);
+    return contractId === undefined ? undefined : this.getLayoutIntentContract(contractId);
+  }
+}
+
+export class InMemoryLayoutIntentEventRepository implements LayoutIntentEventRepository {
+  readonly #events: LayoutIntentEvent[] = [];
+
+  appendLayoutIntentEvent(event: LayoutIntentEvent): LayoutIntentEvent {
+    const parsed = LayoutIntentEventSchema.parse(clone(event));
+    this.#events.push(clone(parsed));
+    return clone(parsed);
+  }
+
+  listLayoutIntentEventsByHome(homeId: string): LayoutIntentEvent[] {
+    return this.#events
+      .filter((event) => event.homeId === homeId)
+      .map(clone)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.eventId.localeCompare(b.eventId));
+  }
+
+  listLayoutIntentEventsByRevision(layoutIntentRevisionId: string): LayoutIntentEvent[] {
+    return this.#events
+      .filter((event) => event.layoutIntentRevisionId === layoutIntentRevisionId)
       .map(clone)
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.eventId.localeCompare(b.eventId));
   }

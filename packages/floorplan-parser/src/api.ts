@@ -2,6 +2,7 @@ import {
   DraftValidationStateSchema,
   FloorplanDraftRevisionSchema,
   FloorplanEditOperationSchema,
+  LayoutIntentOperationSchema,
   P1OperationLogSummarySchema,
   P1ValidationSummarySchema,
   type CanonicalFloorplanRevision,
@@ -9,6 +10,11 @@ import {
   type FloorplanDraftRevision,
   type FloorplanEditOperation,
   type GeometryDependencyRecord,
+  type LayoutIntentContract,
+  type LayoutIntentInvalidationSummary,
+  type LayoutIntentOperation,
+  type LayoutIntentRevision,
+  type LayoutIntentValidationState,
   type P1InvalidationSummary,
   type P1OperationLogSummary,
   type P1SceneContractV02,
@@ -39,6 +45,17 @@ import {
   listGeometryDependentArtifacts,
   returnInvalidationSummary
 } from "./invalidation.js";
+import {
+  applyLayoutIntentOperations,
+  compareLayoutIntentHash,
+  confirmLayoutIntentRevision,
+  createInitialLayoutIntentFromSceneContract,
+  emitLayoutIntentEvent,
+  invalidateForLayoutIntentChange,
+  invalidateLayoutIntentIfGeometryChanged,
+  layoutEventTypeForOperation,
+  validateLayoutIntent
+} from "./layout-intent.js";
 import type { BoundaryIssue, PolygonFace, WallGraph } from "@homeai/geometry";
 import type { P1RepositorySet } from "./repositories.js";
 
@@ -87,6 +104,37 @@ export type P1ConfirmResponse =
   | {
       ok: false;
       validation: DraftValidationState;
+    };
+
+export type LayoutIntentSessionResponse = {
+  layoutIntentRevisionId: string;
+  canonicalRevisionId: string;
+  sceneContractId: string;
+  geometryHash: string;
+  layoutIntentHash: string;
+  aiAutofillEnabled: boolean;
+  placeholders: LayoutIntentRevision["placeholders"];
+  validation: LayoutIntentValidationState;
+};
+
+export type LayoutIntentOperationResponse = {
+  layoutIntentRevision: LayoutIntentRevision;
+  validation: LayoutIntentValidationState;
+  layoutIntentHash: string;
+};
+
+export type LayoutIntentConfirmResponse =
+  | {
+      ok: true;
+      layoutIntentRevisionId: string;
+      layoutIntentContractId: string;
+      layoutIntentHash: string;
+      geometryHash: string;
+      invalidationSummary: LayoutIntentInvalidationSummary;
+    }
+  | {
+      ok: false;
+      validation: LayoutIntentValidationState;
     };
 
 export type P1DebugPayload = {
@@ -174,6 +222,29 @@ export type P1DebugPayload = {
   downstreamDependencies: GeometryDependencyRecord[];
   invalidationSummary: P1InvalidationSummary;
   events: ReturnType<P1RepositorySet["events"]["listEventsByHome"]>;
+  layoutIntent?: LayoutIntentRevision;
+  activeLayoutIntentRevisionId?: string;
+  activeLayoutIntentHash?: string;
+  activeLayoutIntentContractId?: string;
+  aiAutofillEnabled?: boolean;
+  layoutPlaceholderSummary?: {
+    count: number;
+    byRoom: Record<string, number>;
+    placeholderIds: string[];
+  };
+  layoutValidationSummary?: {
+    status: LayoutIntentValidationState["status"];
+    canConfirm: boolean;
+    issueCount: number;
+    errorCount: number;
+  };
+  layoutEvents: ReturnType<P1RepositorySet["layoutEvents"]["listLayoutIntentEventsByHome"]>;
+  layoutInvalidationSummary?: LayoutIntentInvalidationSummary;
+  hashComparison?: {
+    geometryHash?: string;
+    layoutIntentHash?: string;
+    hashesAreSeparate: true;
+  };
 };
 
 export function postP1Session(
@@ -371,6 +442,172 @@ export function postP1ConfirmDraft(context: P1ApiContext, draftRevisionId: strin
   };
 }
 
+export function postLayoutIntentSession(context: P1ApiContext, homeId: string): LayoutIntentSessionResponse {
+  const now = currentTimestamp(context);
+  const canonical = context.repositories.canonical.getActiveCanonicalRevisionForHome(homeId);
+  if (canonical === undefined) {
+    throw new Error("Layout intent session requires an active canonical floorplan revision.");
+  }
+  const scene = context.repositories.sceneContracts.getActiveSceneContractForHome(homeId);
+  if (scene === undefined) {
+    throw new Error("Layout intent session requires an active SceneContract v0.2.");
+  }
+  const existing = context.repositories.layoutIntents.getActiveLayoutIntentForCanonicalRevision(canonical.canonicalRevisionId);
+  const layoutIntent = existing ?? context.repositories.layoutIntents.createLayoutIntentRevision(
+    createInitialLayoutIntentFromSceneContract(scene, {
+      layoutIntentRevisionId: makeId(context, "layout-intent", `${homeId}-${canonical.canonicalRevisionId}`),
+      createdAt: now
+    })
+  );
+  emitLayoutIntentEvent(context.repositories.layoutEvents, {
+    eventId: makeId(context, "event-layout-session", layoutIntent.layoutIntentRevisionId),
+    eventType: "layout_intent_session_started",
+    homeId,
+    ...actor(context),
+    canonicalRevisionId: layoutIntent.canonicalRevisionId,
+    sceneContractId: layoutIntent.sceneContractId,
+    geometryHash: layoutIntent.geometryHash,
+    layoutIntentRevisionId: layoutIntent.layoutIntentRevisionId,
+    layoutIntentHash: layoutIntent.layoutIntentHash,
+    timestamp: now
+  });
+
+  return summarizeLayoutIntentSession(layoutIntent);
+}
+
+export function getLayoutIntentRevision(
+  context: P1ApiContext,
+  layoutIntentRevisionId: string
+): LayoutIntentRevision {
+  const layoutIntent = context.repositories.layoutIntents.getLayoutIntentRevision(layoutIntentRevisionId);
+  if (layoutIntent === undefined) {
+    throw new Error(`Layout intent revision not found: ${layoutIntentRevisionId}`);
+  }
+  return layoutIntent;
+}
+
+export function patchLayoutIntentOperations(
+  context: P1ApiContext,
+  layoutIntentRevisionId: string,
+  input: { operations: LayoutIntentOperation[] }
+): LayoutIntentOperationResponse {
+  const layoutIntent = getLayoutIntentRevision(context, layoutIntentRevisionId);
+  const scene = requireActiveSceneForLayout(context, layoutIntent);
+  const operations = input.operations.map((operation) => LayoutIntentOperationSchema.parse(operation));
+  const updated = applyLayoutIntentOperations(layoutIntent, operations, {
+    sceneContract: scene,
+    updatedAt: operations[operations.length - 1]?.createdAt ?? currentTimestamp(context),
+    store: context.repositories.layoutIntents
+  });
+  for (const operation of operations) {
+    emitLayoutIntentEvent(context.repositories.layoutEvents, {
+      eventId: makeId(context, "event-layout-operation", operation.operationId),
+      eventType: layoutEventTypeForOperation(operation.operationType),
+      homeId: updated.homeId,
+      ...actor(context),
+      canonicalRevisionId: updated.canonicalRevisionId,
+      sceneContractId: updated.sceneContractId,
+      geometryHash: updated.geometryHash,
+      layoutIntentRevisionId: updated.layoutIntentRevisionId,
+      layoutIntentHash: updated.layoutIntentHash,
+      ...(operation.placeholderId === undefined ? {} : { placeholderId: operation.placeholderId }),
+      timestamp: operation.createdAt
+    });
+  }
+  return {
+    layoutIntentRevision: updated,
+    validation: updated.validation,
+    layoutIntentHash: updated.layoutIntentHash
+  };
+}
+
+export function postLayoutIntentValidate(
+  context: P1ApiContext,
+  layoutIntentRevisionId: string
+): LayoutIntentValidationState {
+  const layoutIntent = getLayoutIntentRevision(context, layoutIntentRevisionId);
+  const scene = requireActiveSceneForLayout(context, layoutIntent);
+  const validation = validateLayoutIntent(layoutIntent, scene, { validatedAt: currentTimestamp(context) });
+  const updated = context.repositories.layoutIntents.updateLayoutIntentRevision({
+    ...layoutIntent,
+    validation,
+    updatedAt: currentTimestamp(context)
+  });
+  emitLayoutIntentEvent(context.repositories.layoutEvents, {
+    eventId: makeId(context, "event-layout-validated", layoutIntentRevisionId),
+    eventType: "layout_intent_validated",
+    homeId: updated.homeId,
+    ...actor(context),
+    canonicalRevisionId: updated.canonicalRevisionId,
+    sceneContractId: updated.sceneContractId,
+    geometryHash: updated.geometryHash,
+    layoutIntentRevisionId: updated.layoutIntentRevisionId,
+    layoutIntentHash: updated.layoutIntentHash,
+    timestamp: currentTimestamp(context)
+  });
+  return validation;
+}
+
+export function postLayoutIntentConfirm(
+  context: P1ApiContext,
+  layoutIntentRevisionId: string
+): LayoutIntentConfirmResponse {
+  const layoutIntent = getLayoutIntentRevision(context, layoutIntentRevisionId);
+  const scene = requireActiveSceneForLayout(context, layoutIntent);
+  const confirmedAt = currentTimestamp(context);
+  const previousContract = context.repositories.layoutIntents.getActiveLayoutIntentContractForRevision(layoutIntentRevisionId);
+  const result = confirmLayoutIntentRevision(layoutIntent, scene, {
+    layoutIntentContractId: makeId(context, "layout-contract", layoutIntentRevisionId),
+    confirmedAt,
+    store: context.repositories.layoutIntents
+  });
+  if (!result.ok) {
+    return {
+      ok: false,
+      validation: result.validation
+    };
+  }
+  const invalidation = invalidateForLayoutIntentChange([], {
+    ...(previousContract?.layoutIntentHash === undefined
+      ? {}
+      : { previousLayoutIntentHash: previousContract.layoutIntentHash }),
+    newLayoutIntentHash: result.layoutIntentContract.layoutIntentHash,
+    invalidatedAt: confirmedAt
+  }).summary;
+  emitLayoutIntentEvent(context.repositories.layoutEvents, {
+    eventId: makeId(context, "event-layout-confirmed", layoutIntentRevisionId),
+    eventType: "layout_intent_confirmed",
+    homeId: result.layoutIntentRevision.homeId,
+    ...actor(context),
+    canonicalRevisionId: result.layoutIntentRevision.canonicalRevisionId,
+    sceneContractId: result.layoutIntentRevision.sceneContractId,
+    geometryHash: result.layoutIntentRevision.geometryHash,
+    layoutIntentRevisionId,
+    layoutIntentHash: result.layoutIntentRevision.layoutIntentHash,
+    timestamp: confirmedAt
+  });
+
+  return {
+    ok: true,
+    layoutIntentRevisionId,
+    layoutIntentContractId: result.layoutIntentContract.layoutIntentContractId,
+    layoutIntentHash: result.layoutIntentContract.layoutIntentHash,
+    geometryHash: result.layoutIntentContract.geometryHash,
+    invalidationSummary: invalidation
+  };
+}
+
+export function getLayoutIntentContract(
+  context: P1ApiContext,
+  layoutIntentRevisionId: string
+): LayoutIntentContract {
+  const contract = context.repositories.layoutIntents.getActiveLayoutIntentContractForRevision(layoutIntentRevisionId);
+  if (contract === undefined) {
+    throw new Error(`Layout intent contract not found for revision: ${layoutIntentRevisionId}`);
+  }
+  return contract;
+}
+
 export function getP1Canonical(
   context: P1ApiContext,
   canonicalRevisionId: string
@@ -396,6 +633,11 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
   const currentDraft = latestDraftId === undefined ? undefined : context.repositories.drafts.getDraftById(latestDraftId);
   const canonicalRevision = context.repositories.canonical.getActiveCanonicalRevisionForHome(homeId);
   const sceneContract = context.repositories.sceneContracts.getActiveSceneContractForHome(homeId);
+  const layoutIntent = context.repositories.layoutIntents.getActiveLayoutIntentForHome(homeId);
+  const layoutContract = layoutIntent === undefined
+    ? undefined
+    : context.repositories.layoutIntents.getActiveLayoutIntentContractForRevision(layoutIntent.layoutIntentRevisionId);
+  const layoutEvents = context.repositories.layoutEvents.listLayoutIntentEventsByHome(homeId);
   const graph = currentDraft === undefined ? undefined : buildWallGraph(currentDraft.walls);
   const faces = graph === undefined ? [] : filterInvalidFaces(polygonizeClosedFaces(graph), 1);
   const boundaryIssues = graph === undefined ? [] : detectUnclosedBoundaries(graph);
@@ -411,6 +653,9 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
   const downstreamBaseline = sceneContract === undefined
     ? undefined
     : buildFullSpaceCoverageFromSceneContract(sceneContract);
+  const layoutInvalidationSummary = layoutIntent === undefined || sceneContract === undefined
+    ? undefined
+    : invalidateLayoutIntentIfGeometryChanged(layoutIntent, sceneContract);
 
   return {
     fixture: {
@@ -512,7 +757,21 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
       invalidatedDependencyIds: dependencies.filter((record) => record.status === "invalidated").map((record) => record.dependencyId),
       archivedDependencyIds: dependencies.filter((record) => record.status === "archived").map((record) => record.dependencyId)
     }),
-    events
+    events,
+    ...(layoutIntent === undefined ? {} : { layoutIntent }),
+    ...(layoutIntent === undefined ? {} : { activeLayoutIntentRevisionId: layoutIntent.layoutIntentRevisionId }),
+    ...(layoutIntent === undefined ? {} : { activeLayoutIntentHash: layoutIntent.layoutIntentHash }),
+    ...(layoutContract === undefined ? {} : { activeLayoutIntentContractId: layoutContract.layoutIntentContractId }),
+    ...(layoutIntent === undefined ? {} : { aiAutofillEnabled: layoutIntent.aiAutofillEnabled }),
+    ...(layoutIntent === undefined ? {} : { layoutPlaceholderSummary: summarizePlaceholders(layoutIntent) }),
+    ...(layoutIntent === undefined ? {} : { layoutValidationSummary: summarizeLayoutValidation(layoutIntent.validation) }),
+    layoutEvents,
+    ...(layoutInvalidationSummary === undefined ? {} : { layoutInvalidationSummary }),
+    hashComparison: {
+      ...(canonicalRevision?.geometryHash === undefined ? {} : { geometryHash: canonicalRevision.geometryHash }),
+      ...(layoutIntent?.layoutIntentHash === undefined ? {} : { layoutIntentHash: layoutIntent.layoutIntentHash }),
+      hashesAreSeparate: true
+    }
   };
 }
 
@@ -532,6 +791,51 @@ export function summarizeOperationLog(operations: readonly FloorplanEditOperatio
       ? {}
       : { lastOperationId: operations[operations.length - 1]?.operationId })
   });
+}
+
+function summarizeLayoutIntentSession(layoutIntent: LayoutIntentRevision): LayoutIntentSessionResponse {
+  return {
+    layoutIntentRevisionId: layoutIntent.layoutIntentRevisionId,
+    canonicalRevisionId: layoutIntent.canonicalRevisionId,
+    sceneContractId: layoutIntent.sceneContractId,
+    geometryHash: layoutIntent.geometryHash,
+    layoutIntentHash: layoutIntent.layoutIntentHash,
+    aiAutofillEnabled: layoutIntent.aiAutofillEnabled,
+    placeholders: layoutIntent.placeholders,
+    validation: layoutIntent.validation
+  };
+}
+
+function requireActiveSceneForLayout(context: P1ApiContext, layoutIntent: LayoutIntentRevision): P1SceneContractV02 {
+  const scene = context.repositories.sceneContracts.getSceneContract(layoutIntent.sceneContractId);
+  if (scene === undefined) {
+    throw new Error(`SceneContract not found for layout intent: ${layoutIntent.sceneContractId}`);
+  }
+  if (scene.geometryHash !== layoutIntent.geometryHash || scene.canonicalRevisionId !== layoutIntent.canonicalRevisionId) {
+    throw new Error("Layout intent geometry trace does not match its SceneContract.");
+  }
+  return scene;
+}
+
+function summarizePlaceholders(layoutIntent: LayoutIntentRevision) {
+  const byRoom: Record<string, number> = {};
+  for (const placeholder of layoutIntent.placeholders) {
+    byRoom[placeholder.roomId] = (byRoom[placeholder.roomId] ?? 0) + 1;
+  }
+  return {
+    count: layoutIntent.placeholders.length,
+    byRoom,
+    placeholderIds: layoutIntent.placeholders.map((placeholder) => placeholder.placeholderId).sort()
+  };
+}
+
+function summarizeLayoutValidation(validation: LayoutIntentValidationState) {
+  return {
+    status: validation.status,
+    canConfirm: validation.canConfirm,
+    issueCount: validation.issues.length,
+    errorCount: validation.issues.filter((issue) => issue.severity === "error").length
+  };
 }
 
 function requireDraft(context: P1ApiContext, draftRevisionId: string): FloorplanDraftRevision {

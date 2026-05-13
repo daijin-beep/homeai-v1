@@ -83,6 +83,59 @@ describe("P1 release-gate scope scan", () => {
 
     expect(hits).toEqual([]);
   });
+
+  it("keeps layout intent out of canonical geometry and SceneContract geometry", () => {
+    const spaceTruthFiles = [
+      join(repoRoot, "packages", "contracts", "src", "p1-floorplan-adjustment.ts"),
+      join(repoRoot, "packages", "geometry", "src", "index.ts"),
+      join(repoRoot, "packages", "scene", "src", "index.ts")
+    ];
+    const forbidden = [
+      /FurniturePlaceholder/,
+      /LayoutIntentRevision/,
+      /layoutIntentHash/,
+      /layout\.placeholder/,
+      /aiAutofillEnabled/
+    ];
+    const hits = spaceTruthFiles.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
+
+  it("keeps layout intent spike out of forbidden product scope", () => {
+    const files = collectFiles([
+      join(repoRoot, "packages", "contracts", "src", "layout-intent.ts"),
+      join(repoRoot, "packages", "floorplan-parser", "src", "layout-intent.ts"),
+      join(repoRoot, "apps", "web", "app", "api", "p1", "layout-intents")
+    ]);
+    const forbidden = [
+      /P3 editor implementation/i,
+      /Design Kernel/i,
+      /image provider/i,
+      /SKU matching/i,
+      /payment/i,
+      /PDF export/i,
+      /DWG/i,
+      /DXF/i,
+      /construction drawing/i,
+      /load-bearing/i,
+      /GB compliance/i,
+      /chat editing/i
+    ];
+    const hits = files.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
 });
 
 function collectFiles(roots: string[]): string[] {
