@@ -1,0 +1,83 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const repoRoot = process.cwd();
+
+describe("P1 release-gate scope scan", () => {
+  it("keeps forbidden product scope out of implementation files", () => {
+    const files = collectFiles([
+      join(repoRoot, "apps", "web", "app", "p1"),
+      join(repoRoot, "apps", "web", "app", "api", "p1"),
+      join(repoRoot, "packages", "contracts", "src"),
+      join(repoRoot, "packages", "floorplan-parser", "src"),
+      join(repoRoot, "packages", "geometry", "src"),
+      join(repoRoot, "packages", "scene", "src")
+    ]);
+    const forbidden = [
+      /Design Kernel/i,
+      /PDF export/i,
+      /DWG/i,
+      /DXF/i,
+      /construction drawing/i,
+      /load-bearing/i,
+      /GB compliance/i,
+      /structural feasibility/i,
+      /chat editing/i,
+      /true curve canonical/i,
+      /承重墙/,
+      /施工风险/,
+      /建筑规范/,
+      /无法报建/
+    ];
+
+    const hits = files.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
+
+  it("keeps P1 UI behind API routes instead of direct service/store imports", () => {
+    const files = collectFiles([join(repoRoot, "apps", "web", "app", "p1")]);
+    const forbidden = [
+      /@homeai\/floorplan-parser/,
+      /createInMemoryP1Repositories/,
+      /Repository/,
+      /confirmFloorplanDraft/,
+      /createCanonicalFloorplanRevision/,
+      /runSpaceTruthGate/,
+      /buildSceneContract/,
+      /createSceneContractV02/
+    ];
+    const hits = files.flatMap((file) => {
+      const text = readFileSync(file, "utf8");
+      return forbidden
+        .filter((pattern) => pattern.test(text))
+        .map((pattern) => `${file}: ${pattern.toString()}`);
+    });
+
+    expect(hits).toEqual([]);
+  });
+});
+
+function collectFiles(roots: string[]): string[] {
+  return roots.flatMap((root) => walk(root)).filter((file) => /\.(ts|tsx|json)$/.test(file));
+}
+
+function walk(path: string): string[] {
+  const stat = statSync(path);
+  if (stat.isFile()) {
+    return [path];
+  }
+  return readdirSync(path).flatMap((entry) => {
+    const child = join(path, entry);
+    if (child.includes("node_modules")) {
+      return [];
+    }
+    return walk(child);
+  });
+}

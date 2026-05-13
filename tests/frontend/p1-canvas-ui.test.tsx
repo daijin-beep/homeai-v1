@@ -52,6 +52,36 @@ describe("P1 Canvas normal mode UI", () => {
     expect(scenario.calls.at(-1)?.operations[0]?.operationType).toBe("wall.delete");
   });
 
+  it("hardens selection, failed saves, keyboard shortcuts, and wall boundary recompute", async () => {
+    const scenario = mockP1Fetch(simpleRectangleHome, { failNextPatch: true });
+    render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
+    await screen.findByTestId("p1-canvas-stage");
+
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    expect(screen.getByTestId("wall-properties")).toHaveTextContent("wall-simple-east");
+    fireEvent.click(screen.getByText("删除墙"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("patch failed");
+    expect(screen.getByTestId("wall-wall-simple-east")).toBeInTheDocument();
+    expect(screen.getByTestId("wall-properties")).toHaveTextContent("wall-simple-east");
+
+    fireEvent.change(screen.getByLabelText("墙体长度（cm）"), { target: { value: "450" } });
+    fireEvent.click(screen.getByText("应用长度"));
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.resize"));
+    expect(screen.getByTestId("wall-properties")).toHaveTextContent("wall-simple-east");
+    expect(scenario.recomputeCalls).toBeGreaterThan(0);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("wall-properties")).not.toBeInTheDocument());
+    const callCount = scenario.calls.length;
+    fireEvent.keyDown(window, { key: "Delete" });
+    expect(scenario.calls).toHaveLength(callCount);
+
+    fireEvent.pointerDown(screen.getByTestId("wall-wall-simple-east"));
+    fireEvent.keyDown(window, { key: "Delete" });
+    await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.delete"));
+    expect(screen.queryByTestId("wall-properties")).not.toBeInTheDocument();
+  });
+
   it("wall add, delete, resize, numeric cm input, endpoint drag, and invalid boundary display use API operations", async () => {
     const scenario = mockP1Fetch(simpleRectangleHome);
     render(<P1FloorplanEditor homeId={simpleRectangleHome.homeId} />);
@@ -256,6 +286,20 @@ describe("P1 Canvas normal mode UI", () => {
     fireEvent.click(screen.getByText("Apply thickness"));
 
     expect(await screen.findByTestId("validation-issue-WALL_THICKNESS_OUT_OF_RANGE")).toHaveTextContent("该数值超出系统可处理范围");
+    scenario.validationOverride = invalidValidation("FLOOR_HEIGHT_OUT_OF_RANGE", "Floor height is outside range.", "global_params");
+    fireEvent.change(screen.getByLabelText("Floor height cm"), { target: { value: "100" } });
+    fireEvent.click(screen.getByText("Apply floor height"));
+    expect(await screen.findByTestId("validation-issue-FLOOR_HEIGHT_OUT_OF_RANGE")).toHaveTextContent("该数值超出系统可处理范围");
+
+    scenario.validationOverride = undefined;
+    fireEvent.pointerDown(screen.getByTestId("door-door-simple-entry"));
+    expect(await screen.findByTestId("door-dimensions-control")).toBeInTheDocument();
+    scenario.validationOverride = invalidValidation("DOOR_WIDTH_OUT_OF_RANGE", "Door width is outside range.", "opening", "door-simple-entry");
+    fireEvent.change(screen.getByLabelText("Door width cm"), { target: { value: "300" } });
+    fireEvent.click(screen.getByText("Apply door dimensions"));
+    expect(await screen.findByTestId("validation-issue-DOOR_WIDTH_OUT_OF_RANGE")).toHaveTextContent("该数值超出系统可处理范围");
+    expect(screen.queryByText("不符合规范")).not.toBeInTheDocument();
+    expect(screen.queryByText("存在施工风险")).not.toBeInTheDocument();
   });
 
   it("free wall drawing supports non-axis, polyline, and arc-like segment-only operations", async () => {
@@ -390,7 +434,8 @@ function mockP1Fetch(
     validationOverride: options.validation,
     calls: [] as FetchCall[],
     confirmCalls: 0,
-    failNextPatch: options.failNextPatch ?? false
+    failNextPatch: options.failNextPatch ?? false,
+    recomputeCalls: 0
   };
 
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -415,6 +460,14 @@ function mockP1Fetch(
         draft: scenario.draft,
         validationSummary: { status: "valid", canConfirm: true, issueCount: 0, blockingIssueCount: 0 },
         operationLogSummary: { count: scenario.draft.operationLog.length, lastOperationId: body.operations.at(-1)?.operationId }
+      });
+    }
+    if (url.includes("/recompute-boundaries")) {
+      scenario.recomputeCalls += 1;
+      return jsonResponse({
+        rooms: scenario.draft.rooms,
+        boundaryIssues: [],
+        validationSummary: { status: "valid", canConfirm: true, issueCount: 0, blockingIssueCount: 0 }
       });
     }
     if (url.includes("/validate")) {

@@ -39,6 +39,7 @@ import {
   confirmP1Draft,
   debugPayloadUrl,
   fetchP1Draft,
+  recomputeP1Boundaries,
   startP1Session,
   validateP1Draft
 } from "../_lib/p1-api-client.js";
@@ -201,6 +202,41 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     setDoorHeightInputCm(formatMmAsCm(selectedOpening.heightMm));
   }, [selectedOpening]);
 
+  useEffect(() => {
+    if (selectedElement === null || currentDraft === null) {
+      return;
+    }
+    const stillExists =
+      (selectedElement.type === "wall" && currentDraft.walls.some((wall) => wall.wallId === selectedElement.id)) ||
+      (selectedElement.type === "door" && currentDraft.openings.some((opening) => opening.type === "door" && opening.openingId === selectedElement.id)) ||
+      (selectedElement.type === "window" && currentDraft.openings.some((opening) => opening.type === "window" && opening.openingId === selectedElement.id)) ||
+      ((selectedElement.type === "room" || selectedElement.type === "balcony") && currentDraft.rooms.some((room) => room.roomId === selectedElement.id));
+    if (!stillExists) {
+      setSelectedElement(null);
+    }
+  }, [currentDraft, selectedElement]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelectedElement(null);
+        setPendingWallStart(null);
+        setActiveTool("select");
+        return;
+      }
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedElement !== null) {
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        event.preventDefault();
+        void handleDeleteSelected();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedElement, currentDraft, draftRevisionId]);
+
   async function submitOperations(
     operations: FloorplanEditOperation[],
     options: { showReentryNotice?: boolean } = { showReentryNotice: true }
@@ -212,7 +248,12 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     setApiError(null);
     try {
       const response = await applyP1Operations(draftRevisionId, operations);
-      setCurrentDraft(response.draft);
+      let nextDraft = response.draft;
+      if (shouldRecomputeBoundaries(operations)) {
+        await recomputeP1Boundaries(draftRevisionId);
+        nextDraft = (await fetchP1Draft(draftRevisionId)).draft;
+      }
+      setCurrentDraft(nextDraft);
       const validation = await validateP1Draft(draftRevisionId);
       setValidationState(validation);
       setIsDirty(true);
@@ -220,7 +261,7 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
         setShowReentryEditNotice(true);
         setHasShownReentryEditNotice(true);
       }
-      return response.draft;
+      return nextDraft;
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "操作未保存，已保留服务器草稿");
     } finally {
@@ -560,19 +601,22 @@ export function P1FloorplanEditor({ homeId }: { homeId: string }) {
     if (selectedElement === null) {
       return;
     }
+    let updated: FloorplanDraftRevision | undefined;
     if (selectedElement.type === "wall") {
-      await submitOperations([createOperation("wall.delete", "wall", { targetId: selectedElement.id })]);
+      updated = await submitOperations([createOperation("wall.delete", "wall", { targetId: selectedElement.id })]);
     }
     if (selectedElement.type === "door") {
-      await submitOperations([createOperation("door.delete", "opening", { targetId: selectedElement.id })]);
+      updated = await submitOperations([createOperation("door.delete", "opening", { targetId: selectedElement.id })]);
     }
     if (selectedElement.type === "window") {
-      await submitOperations([createOperation("window.delete", "opening", { targetId: selectedElement.id })]);
+      updated = await submitOperations([createOperation("window.delete", "opening", { targetId: selectedElement.id })]);
     }
     if (selectedElement.type === "balcony") {
-      await submitOperations([createOperation("balcony.delete", "room", { targetId: selectedElement.id })]);
+      updated = await submitOperations([createOperation("balcony.delete", "room", { targetId: selectedElement.id })]);
     }
-    setSelectedElement(null);
+    if (updated !== undefined) {
+      setSelectedElement(null);
+    }
   }
 
   async function handleDoorSwingChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -1314,6 +1358,16 @@ function distancePointToSegment(point: Point2D, start: Point2D, end: Point2D): n
 
 function defaultWallThickness(draft: FloorplanDraftRevision): number {
   return draft.walls.find((wall) => wall.kind === "interior")?.thicknessMm ?? 120;
+}
+
+function shouldRecomputeBoundaries(operations: readonly FloorplanEditOperation[]): boolean {
+  return operations.some((operation) =>
+    operation.operationType === "wall.add" ||
+    operation.operationType === "wall.delete" ||
+    operation.operationType === "wall.resize" ||
+    operation.operationType === "wall.moveEndpoint" ||
+    operation.operationType === "freeWall.draw"
+  );
 }
 
 function toolLabel(tool: ToolMode): string {

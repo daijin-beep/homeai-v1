@@ -101,7 +101,18 @@ export type P1DebugPayload = {
   validation?: DraftValidationState;
   canonicalRevision?: CanonicalFloorplanRevision;
   geometryHash?: string;
+  sceneContractId?: string;
   sceneContract?: P1SceneContractV02;
+  sceneContractSummary?: {
+    sceneContractId: string;
+    canonicalRevisionId: string;
+    geometryHash: string;
+    version: P1SceneContractV02["version"];
+    readonly: true;
+    roomCount: number;
+    wallCount: number;
+    openingCount: number;
+  };
   downstreamDependencies: GeometryDependencyRecord[];
   invalidationSummary: P1InvalidationSummary;
   events: ReturnType<P1RepositorySet["events"]["listEventsByHome"]>;
@@ -357,7 +368,22 @@ export function getP1DebugPayload(context: P1ApiContext, homeId: string): P1Debu
     ...(validation === undefined ? {} : { validation }),
     ...(canonicalRevision === undefined ? {} : { canonicalRevision }),
     ...(canonicalRevision === undefined ? {} : { geometryHash: canonicalRevision.geometryHash }),
+    ...(sceneContract === undefined ? {} : { sceneContractId: sceneContract.sceneContractId }),
     ...(sceneContract === undefined ? {} : { sceneContract }),
+    ...(sceneContract === undefined
+      ? {}
+      : {
+          sceneContractSummary: {
+            sceneContractId: sceneContract.sceneContractId,
+            canonicalRevisionId: sceneContract.canonicalRevisionId,
+            geometryHash: sceneContract.geometryHash,
+            version: sceneContract.version,
+            readonly: true,
+            roomCount: sceneContract.rooms.length,
+            wallCount: sceneContract.walls.length,
+            openingCount: sceneContract.openings.length
+          }
+        }),
     downstreamDependencies: dependencies,
     invalidationSummary: returnInvalidationSummary({
       comparison,
