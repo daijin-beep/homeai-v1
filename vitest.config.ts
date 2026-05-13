@@ -7,7 +7,8 @@ export default defineConfig({
       "@homeai/contracts": fileURLToPath(new URL("./packages/contracts/src/index.ts", import.meta.url)),
       "@homeai/geometry": fileURLToPath(new URL("./packages/geometry/src/index.ts", import.meta.url)),
       "@homeai/floorplan-parser": fileURLToPath(new URL("./packages/floorplan-parser/src/index.ts", import.meta.url)),
-      "@homeai/scene": fileURLToPath(new URL("./packages/scene/src/index.ts", import.meta.url))
+      "@homeai/scene": fileURLToPath(new URL("./packages/scene/src/index.ts", import.meta.url)),
+      "@homeai/ads-render": fileURLToPath(new URL("./packages/ads-render/src/index.ts", import.meta.url))
     }
   },
   test: {
