@@ -1,5 +1,5 @@
 {
-  "name": "@homeai/ads-render",
+  "name": "@homeai/render-verifier",
   "version": "0.0.0",
   "private": true,
   "type": "module",

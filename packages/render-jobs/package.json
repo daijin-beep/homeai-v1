@@ -1,25 +1,25 @@
 {
-  "name": "@homeai/web",
+  "name": "@homeai/render-jobs",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "dev": "next dev",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@homeai/ads-render": "workspace:*",
     "@homeai/contracts": "workspace:*",
-    "@homeai/floorplan-parser": "workspace:*",
     "@homeai/image-adapter": "workspace:*",
-    "@homeai/render-jobs": "workspace:*",
     "@homeai/render-verifier": "workspace:*",
-    "next": "latest",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "zod": "latest"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "typescript": "latest"
   }
 }

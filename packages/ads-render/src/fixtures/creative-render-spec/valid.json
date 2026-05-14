@@ -1,0 +1,38 @@
+{
+  "renderSpecId": "rs_demo_001",
+  "schemeId": "scheme_demo_001",
+  "roomId": "room_living_001",
+  "cameraId": "cam_living_north",
+  "canonicalRevisionId": "canon_v1_demo_001",
+  "sceneContractId": "sc_v0_2_demo_001",
+  "geometryHash": "sha256:fixture_geometry_hash_v1_demo_001",
+  "layoutIntentHash": "sha256:fixture_layout_intent_hash_v1_demo_001",
+  "inputs": {
+    "controlRenderUrl": "https://homestylo-dev.test/fixtures/control.png",
+    "depthMapUrl": "https://homestylo-dev.test/fixtures/depth.png",
+    "semanticMaskUrl": "https://homestylo-dev.test/fixtures/semantic.png",
+    "lineMapUrl": "https://homestylo-dev.test/fixtures/line.png",
+    "lockedGeometryMaskUrl": "https://homestylo-dev.test/fixtures/locked.png",
+    "anchorLayoutMaskUrl": "https://homestylo-dev.test/fixtures/anchor.png"
+  },
+  "hardConstraints": {
+    "preserveWalls": true,
+    "preserveDoors": true,
+    "preserveWindows": true,
+    "preserveRoomProportion": true,
+    "preserveAnchorZones": true
+  },
+  "style": {
+    "styleId": "minimal_warm_v1",
+    "paletteHint": ["warm_neutral", "wood", "off_white"]
+  },
+  "budget": {
+    "band": "mid",
+    "totalCents": 250000
+  },
+  "forbiddenChanges": [
+    "remove_window",
+    "block_door",
+    "alter_room_proportion"
+  ]
+}

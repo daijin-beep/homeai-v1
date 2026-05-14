@@ -38,12 +38,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@homeai/ads-render':
+        specifier: workspace:*
+        version: link:../../packages/ads-render
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       '@homeai/floorplan-parser':
         specifier: workspace:*
         version: link:../../packages/floorplan-parser
+      '@homeai/image-adapter':
+        specifier: workspace:*
+        version: link:../../packages/image-adapter
+      '@homeai/render-jobs':
+        specifier: workspace:*
+        version: link:../../packages/render-jobs
+      '@homeai/render-verifier':
+        specifier: workspace:*
+        version: link:../../packages/render-verifier
       next:
         specifier: latest
         version: 16.2.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -63,6 +75,9 @@ importers:
 
   packages/ads-render:
     dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       zod:
         specifier: latest
         version: 4.4.3
@@ -123,6 +138,22 @@ importers:
         specifier: latest
         version: 6.0.3
 
+  packages/image-adapter:
+    dependencies:
+      '@homeai/ads-render':
+        specifier: workspace:*
+        version: link:../ads-render
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: latest
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
   packages/providers:
     dependencies:
       '@homeai/contracts':
@@ -133,11 +164,46 @@ importers:
         specifier: latest
         version: 6.0.3
 
+  packages/render-jobs:
+    dependencies:
+      '@homeai/ads-render':
+        specifier: workspace:*
+        version: link:../ads-render
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@homeai/image-adapter':
+        specifier: workspace:*
+        version: link:../image-adapter
+      '@homeai/render-verifier':
+        specifier: workspace:*
+        version: link:../render-verifier
+      zod:
+        specifier: latest
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
   packages/render-pipeline:
     dependencies:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/render-verifier:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: latest
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: latest
