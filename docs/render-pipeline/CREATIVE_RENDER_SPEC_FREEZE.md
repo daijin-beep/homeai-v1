@@ -84,6 +84,16 @@ This document must remain readable in GitHub raw view with ordinary physical lin
 - Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
 - Keep headings, bullets, and code fences on separate physical lines.
 
+## Exact Raw Review Guard
+
+Reviewers must be able to fetch this exact file from a commit raw URL and see multiline Markdown.
+
+- The first line must be `# CreativeRenderSpec Freeze`.
+- The second physical line must be blank.
+- The third physical line must be `## Purpose`.
+- The raw file must have more than fifty physical LF bytes.
+- The raw file must not contain non-ASCII bytes.
+
 ## Versioning Policy
 
 Any breaking change to `CreativeRenderSpec` requires a new reviewed batch and corresponding ADS consumer review.

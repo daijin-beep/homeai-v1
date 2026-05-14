@@ -58,3 +58,13 @@ This document must remain readable in GitHub raw view with ordinary physical lin
 - Do not collapse this document into one physical line.
 - Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
 - Keep headings, bullets, and code fences on separate physical lines.
+
+## Exact Raw Review Guard
+
+Reviewers must be able to fetch this exact file from a commit raw URL and see multiline Markdown.
+
+- The first line must be `# ADS Recovery PR Review Gate`.
+- The second physical line must be blank.
+- The third physical line must be `## Required PR Handling`.
+- The raw file must have more than thirty physical LF bytes.
+- The raw file must not contain non-ASCII bytes.

@@ -9,6 +9,12 @@ const files = [
 ];
 
 const docs = files.filter((path) => path.endsWith(".md"));
+const minimumLfBytesByPath = new Map<string, number>([
+  ["docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md", 50],
+  ["docs/ads-integration/ADS_CONSUMER_CONTRACT.md", 50],
+  ["docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md", 30],
+  ["tests/docs/creative-render-spec-freeze-docs-format.test.ts", 25]
+]);
 
 const byteOrderMark = [0xef, 0xbb, 0xbf];
 const lineFeedByte = 0x0a;
@@ -42,16 +48,14 @@ describe("Batch 12 docs markdown formatting", () => {
     const text = bytes.toString("utf8");
     const physicalLfCount = countByte(bytes, lineFeedByte);
     const hiddenCharacters = findHiddenCharacters(text);
+    const nonAsciiBytes = findNonAsciiBytes(bytes);
+    const minimumLfBytes = minimumLfBytesByPath.get(path) ?? 25;
 
     expect(Array.from(bytes.subarray(0, 3))).not.toEqual(byteOrderMark);
+    expect(physicalLfCount).toBeGreaterThan(minimumLfBytes);
     expect(text).not.toContain(escapedNewline);
     expect(hiddenCharacters).toEqual([]);
-
-    if (path.endsWith(".md")) {
-      expect(physicalLfCount).toBeGreaterThan(30);
-    } else {
-      expect(physicalLfCount).toBeGreaterThan(25);
-    }
+    expect(nonAsciiBytes).toEqual([]);
   });
 
   it.each(docs)("%s has readable markdown structure", (path) => {
@@ -88,6 +92,18 @@ function countByte(bytes: Buffer, expected: number): number {
   }
 
   return count;
+}
+
+function findNonAsciiBytes(bytes: Buffer): string[] {
+  const nonAscii: string[] = [];
+
+  for (const [index, byte] of bytes.entries()) {
+    if (byte > 0x7f) {
+      nonAscii.push(`0x${byte.toString(16).toUpperCase().padStart(2, "0")} at byte ${index}`);
+    }
+  }
+
+  return nonAscii;
 }
 
 function findHiddenCharacters(text: string): string[] {
