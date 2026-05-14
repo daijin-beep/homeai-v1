@@ -12,6 +12,7 @@
     "@homeai/creative-render-spec": "workspace:*",
     "@homeai/design-kernel": "workspace:*",
     "@homeai/floorplan-parser": "workspace:*",
+    "@homeai/render-pipeline": "workspace:*",
     "@homeai/scheme-page": "workspace:*",
     "next": "latest",
     "react": "19.2.6",
