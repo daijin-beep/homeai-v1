@@ -47,6 +47,9 @@ importers:
       '@homeai/floorplan-parser':
         specifier: workspace:*
         version: link:../../packages/floorplan-parser
+      '@homeai/scheme-page':
+        specifier: workspace:*
+        version: link:../../packages/scheme-page
       next:
         specifier: latest
         version: 16.2.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -154,6 +157,16 @@ importers:
       '@homeai/geometry':
         specifier: workspace:*
         version: link:../geometry
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/scheme-page:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       typescript:
         specifier: latest
