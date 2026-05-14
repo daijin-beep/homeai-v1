@@ -2,10 +2,20 @@ import type {
   SchemePageCoverageSummary,
   SchemePageRoomCard,
   SchemePageViewModel,
-  SchemePageWarning
+  SchemePageWarning,
+  SchemeRenderGalleryViewModel
 } from "@homeai/contracts";
+import { RoomRenderGallerySection } from "../scheme-render-gallery/RoomRenderGallerySection.js";
 
-export function SchemePagePreview({ viewModel, showDebug = false }: { viewModel: SchemePageViewModel; showDebug?: boolean }) {
+export function SchemePagePreview({
+  viewModel,
+  renderGalleryViewModel,
+  showDebug = false
+}: {
+  viewModel: SchemePageViewModel;
+  renderGalleryViewModel?: SchemeRenderGalleryViewModel;
+  showDebug?: boolean;
+}) {
   return (
     <main data-testid="scheme-page-preview" style={shellStyle}>
       <SchemePageHeader viewModel={viewModel} />
@@ -17,6 +27,7 @@ export function SchemePagePreview({ viewModel, showDebug = false }: { viewModel:
           <RoomSchemeCard key={room.roomId} room={room} />
         ))}
       </section>
+      {renderGalleryViewModel === undefined ? null : <RoomRenderGallerySection gallery={renderGalleryViewModel} />}
       {showDebug ? (
         <>
           <SchemeTracePanel viewModel={viewModel} />

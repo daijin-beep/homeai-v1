@@ -36,3 +36,4 @@ export * from "./layout-intent.js";
 export * from "./design-kernel.js";
 export * from "./scheme-page.js";
 export * from "./creative-render-spec.js";
+export * from "./scheme-render-gallery.js";
