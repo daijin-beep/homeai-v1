@@ -34,3 +34,14 @@ export {
   listCreativeRenderSpecFixtures,
   type CreativeRenderSpecFixtureName
 } from "./fixtures/loader.js";
+
+export {
+  GalleryAdmissionStatusSchema,
+  HumanReviewDecisionSchema,
+  HumanReviewDecisionTypeSchema,
+  RenderGalleryItemSchema,
+  type GalleryAdmissionStatus,
+  type HumanReviewDecision,
+  type HumanReviewDecisionType,
+  type RenderGalleryItem
+} from "./contracts/gallery-admission.js";

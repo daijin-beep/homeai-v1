@@ -1,0 +1,14 @@
+{
+  "policyId": "policy_blocked_default_v1",
+  "providerName": "unknown",
+  "modelName": "unknown",
+  "status": "blocked",
+  "maxCandidatesPerRoom": 1,
+  "maxAttemptsPerJob": 1,
+  "timeoutMs": 30000,
+  "maxEstimatedCostCentsPerCandidate": 0,
+  "commercialUseStatus": "unknown",
+  "dataRetentionStatus": "unknown",
+  "copyrightRisk": "unknown",
+  "requiresHumanReview": true
+}
