@@ -42,3 +42,24 @@ export {
 } from "./repositories/in-memory.js";
 
 export { createInMemoryAdsRepositories } from "./repositories/factory.js";
+
+export {
+  ALLOWED_TRANSITIONS,
+  assertTransition,
+  canTransition,
+  isTerminal
+} from "./state/state-machine.js";
+
+export {
+  createInMemorySpecStore,
+  createRenderJob,
+  createRetryPlan,
+  startRenderJob,
+  type CreateRenderJobOutcome,
+  type OrchestratorClock,
+  type OrchestratorDeps,
+  type OrchestratorIdGenerator,
+  type RetryOutcome,
+  type SpecStore,
+  type StartRenderJobOutcome
+} from "./services/orchestrator.js";
