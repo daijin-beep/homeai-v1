@@ -36,3 +36,14 @@ Before ADS runtime work is treated as mergeable, review must confirm:
 Codex Batch 12 does not modify ADS runtime, verifier, render-debug, render snapshot API, render human review API, image adapter registry, bakeoff harness, human review queue, or real provider gate.
 
 Codex Batch 12 only freezes producer-side `CreativeRenderSpec` semantics and documents the ADS consumer boundary.
+
+## Merge Blockers
+
+Block the ADS recovery PR if any of these are present:
+
+- provider output mutates Space Truth
+- failed verification is mapped to pass
+- real providers run without an explicit gate
+- runtime code imports private producer helpers instead of shared contracts
+- gallery admission bypasses verification status
+- any recovery change rewrites Batch 12 frozen field names

@@ -2,7 +2,9 @@
 
 ## Purpose
 
-`CreativeRenderSpec` is the frozen producer-side contract that Codex hands to ADS for render runtime consumption. ADS may validate and consume this object, but it must not mutate the spec, SceneContract geometry, SchemeLite data, or any Space Truth artifact.
+`CreativeRenderSpec` is the frozen producer-side contract that Codex hands to ADS for render runtime consumption.
+
+ADS may validate and consume this object, but it must not mutate the spec, SceneContract geometry, SchemeLite data, or any Space Truth artifact.
 
 Batch 12 does not add a new render runtime. It locks the current contract semantics and adds producer-side validation helpers so ADS has a clear fail-closed input boundary.
 
@@ -44,7 +46,7 @@ These names are canonical for this branch. Do not rename them to flat URL aliase
 - Every input asset must be present and must carry the same `roomId` and `geometryHash` as the spec.
 - All `hardConstraints` values must be `true`.
 - `promptDirectives.forbiddenChanges` must include locks for walls, doors, windows, room proportion, floorplan changes, and anchor zone movement.
-- Style and budget fields are pass-through render directives only. They cannot create new geometry truth.
+- Style and budget fields are pass-through render directives only.
 - Provider/runtime code must treat the spec as readonly.
 
 ## ADS Rejection Conditions
@@ -61,6 +63,18 @@ ADS must reject the spec when:
 - any hard constraint is not `true`
 - required forbidden-change directives are missing
 
+## Scope Lock
+
+Batch 12 is producer-side only.
+
+- Do not import ADS runtime packages.
+- Do not add provider or network behavior.
+- Do not add persistence or database writes.
+- Do not add SKU, payment, PDF, DWG, DXF, export, construction, load-bearing, or GB compliance logic.
+- Do not use provider output as new geometry truth.
+
 ## Versioning Policy
 
-Any breaking change to `CreativeRenderSpec` requires a new reviewed batch and corresponding ADS consumer review. Additive helper functions and docs are allowed only when they preserve the existing schema and do not create runtime/provider scope.
+Any breaking change to `CreativeRenderSpec` requires a new reviewed batch and corresponding ADS consumer review.
+
+Additive helper functions and docs are allowed only when they preserve the existing schema and do not create runtime/provider scope.
