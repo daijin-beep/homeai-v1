@@ -44,3 +44,57 @@ export {
   buildRuntimeSnapshot,
   type RuntimeSnapshot
 } from "./services/runtime-snapshot.js";
+
+// Batch 05 surface — adapters, provider registry, bakeoff harness.
+export {
+  CommercialUseStatusSchema,
+  CopyrightRiskSchema,
+  DataRetentionStatusSchema,
+  RenderProviderPolicySchema,
+  RenderProviderPolicyStatusSchema,
+  type RenderProviderPolicy,
+  type RenderProviderPolicyStatus
+} from "./policy/render-provider-policy.js";
+
+export {
+  assertProviderAllowedForJob,
+  RenderProviderPolicyError,
+  type ProviderGateContext
+} from "./policy/assert-provider-allowed.js";
+
+export {
+  MockImageAdapter,
+  type MockImageAdapterMode,
+  type MockImageAdapterOptions
+} from "./adapters/mock-image-adapter.js";
+
+export type {
+  ImageGenerationInput,
+  ImageGenerationProvider
+} from "./adapters/image-generation-provider.js";
+
+export {
+  createDefaultStubProviderSuite,
+  createStubProvider
+} from "./adapters/stub-providers.js";
+
+export {
+  InMemoryProviderRegistry,
+  createBlockedRealProviderPolicy,
+  createMockProviderPolicy,
+  createStubBakeoffPolicy,
+  type ProviderRegistry,
+  type RegisteredProvider
+} from "./adapters/registry.js";
+
+export {
+  BakeoffProviderResultSchema,
+  BakeoffRunStatusSchema,
+  BakeoffScorecardSchema,
+  runBakeoff,
+  type BakeoffProviderResult,
+  type BakeoffRunInput,
+  type BakeoffRunResult,
+  type BakeoffRunStatus,
+  type BakeoffScorecard
+} from "./bakeoff/runner.js";
