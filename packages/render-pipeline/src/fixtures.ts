@@ -11,7 +11,7 @@ import { buildMockRenderVerificationReports, type MockRenderVerificationScenario
 import { evaluateGalleryEligibility } from "./render-gallery-eligibility.js";
 import { buildRenderJobFromCreativeRenderSpecs } from "./render-job-builder.js";
 
-export type RenderLifecycleScenario = MockRenderVerificationScenario;
+export type RenderLifecycleScenario = MockRenderVerificationScenario | "missing_room_coverage";
 
 export function createRenderLifecycleFixtureInput(options: { withLayoutIntent?: boolean } = {}) {
   const creativeInput = createCreativeRenderSpecFixtureInput({
@@ -31,7 +31,14 @@ export function createRenderLifecycleFixtureInput(options: { withLayoutIntent?: 
 
 export function buildRenderLifecycleDebugFixture(scenario: RenderLifecycleScenario = "all_pass") {
   const fixture = createRenderLifecycleFixtureInput();
-  const initialJob = buildRenderJobFromCreativeRenderSpecs(fixture);
+  const missingCoverageRoomId = fixture.creativeRenderSpecs[0]?.roomId;
+  const creativeRenderSpecs = scenario === "missing_room_coverage"
+    ? fixture.creativeRenderSpecs.filter((spec) => spec.roomId !== missingCoverageRoomId)
+    : fixture.creativeRenderSpecs;
+  const initialJob = buildRenderJobFromCreativeRenderSpecs({
+    ...fixture,
+    creativeRenderSpecs
+  });
   const candidateMode: MockRenderCandidateMode =
     scenario === "one_geometry_hash_mismatch_fail"
       ? "geometry_mismatch_for_one_candidate"
@@ -40,20 +47,21 @@ export function buildRenderLifecycleDebugFixture(scenario: RenderLifecycleScenar
         : "all_pass_assets";
   const candidates = buildMockRenderCandidates({
     renderJob: initialJob,
-    creativeRenderSpecs: fixture.creativeRenderSpecs,
+    creativeRenderSpecs,
     mode: candidateMode
   });
   const verificationReports = buildMockRenderVerificationReports({
     renderJob: initialJob,
     candidates,
-    creativeRenderSpecs: fixture.creativeRenderSpecs,
-    scenario
+    creativeRenderSpecs,
+    scenario: scenario === "missing_room_coverage" ? "all_pass" : scenario
   });
   const galleryEligibility = candidates.map((candidate) =>
     eligibilityForCandidate(candidate, verificationReports)
   );
   const renderJob = buildRenderJobFromCreativeRenderSpecs({
     ...fixture,
+    creativeRenderSpecs,
     candidates,
     verificationReports,
     galleryEligibility
@@ -61,6 +69,7 @@ export function buildRenderLifecycleDebugFixture(scenario: RenderLifecycleScenar
 
   return {
     ...fixture,
+    creativeRenderSpecs,
     renderJob,
     candidates,
     verificationReports,
