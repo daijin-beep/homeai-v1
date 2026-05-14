@@ -73,6 +73,25 @@ importers:
         specifier: latest
         version: 19.2.3(@types/react@19.2.14)
 
+  packages/ads-runtime:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@homeai/render-pipeline':
+        specifier: workspace:*
+        version: link:../render-pipeline
+      '@homeai/render-verifier':
+        specifier: workspace:*
+        version: link:../render-verifier
+      zod:
+        specifier: latest
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
   packages/analytics:
     dependencies:
       '@homeai/contracts':
@@ -166,6 +185,19 @@ importers:
       '@homeai/creative-render-spec':
         specifier: workspace:*
         version: link:../creative-render-spec
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/render-verifier:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: latest
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: latest
@@ -1183,6 +1215,9 @@ packages:
   zod@4.4.2:
     resolution: {integrity: sha512-IynmDyxsEsb9RKzO3J9+4SxXnl2FTFSzNBaKKaMV6tsSk0rw9gYw9gs+JFCq/qk2LCZ78KDwyj+Z289TijSkUw==}
 
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
 snapshots:
 
   '@adobe/css-tools@4.4.4': {}
@@ -1984,3 +2019,5 @@ snapshots:
       zod: 4.4.2
 
   zod@4.4.2: {}
+
+  zod@4.4.3: {}

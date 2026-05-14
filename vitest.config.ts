@@ -13,7 +13,9 @@ export default defineConfig({
       "@homeai/render-pipeline": fileURLToPath(new URL("./packages/render-pipeline/src/index.ts", import.meta.url)),
       "@homeai/scheme-page": fileURLToPath(new URL("./packages/scheme-page/src/index.ts", import.meta.url)),
       "@homeai/scheme-page/fixtures": fileURLToPath(new URL("./packages/scheme-page/src/fixtures.ts", import.meta.url)),
-      "@homeai/scene": fileURLToPath(new URL("./packages/scene/src/index.ts", import.meta.url))
+      "@homeai/scene": fileURLToPath(new URL("./packages/scene/src/index.ts", import.meta.url)),
+      "@homeai/render-verifier": fileURLToPath(new URL("./packages/render-verifier/src/index.ts", import.meta.url)),
+      "@homeai/ads-runtime": fileURLToPath(new URL("./packages/ads-runtime/src/index.ts", import.meta.url))
     }
   },
   test: {
