@@ -17,14 +17,27 @@ ADS should validate against the active contract shape:
 - hard constraints locked true
 - forbidden geometry-change directives present
 
+```text
+CreativeRenderSpec
+validateCreativeRenderSpecForADS()
+inputs.controlRender.uri
+inputs.depthMap.uri
+inputs.semanticMask.uri
+inputs.lineMap.uri
+inputs.lockedGeometryMask.uri
+inputs.anchorLayoutMask.uri
+```
+
 ## Required Context
 
 ADS must compare each spec against the render context:
 
-- `homeId`
-- `floorplanRevisionId`
-- `sceneContractId`
-- `geometryHash`
+```text
+homeId
+floorplanRevisionId
+sceneContractId
+geometryHash
+```
 
 If those values do not match, ADS must reject the spec. ADS must not add fallback ids or infer missing geometry context from provider output.
 

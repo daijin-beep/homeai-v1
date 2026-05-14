@@ -6,11 +6,15 @@ Old ADS PR #2 must be closed as superseded and must not be merged.
 
 The expected recovery branch is:
 
-`ads/rebased-batch03-06-verifier-debug-bakeoff-gated-provider`
+```text
+ads/rebased-batch03-06-verifier-debug-bakeoff-gated-provider
+```
 
 The expected recovery PR title is:
 
-`ADS Recovery: Runtime-only render pipeline scaffold`
+```text
+ADS Recovery: Runtime-only render pipeline scaffold
+```
 
 ## Review Gate
 

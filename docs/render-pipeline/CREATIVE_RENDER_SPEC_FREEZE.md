@@ -10,26 +10,30 @@ Batch 12 does not add a new render runtime. It locks the current contract semant
 
 The active contract already includes these top-level trace fields:
 
-- `renderSpecId`
-- `schemeId`
-- `homeId`
-- `floorplanRevisionId`
-- `sceneContractId`
-- `roomId`
-- `cameraId`
-- `geometryHash`
-- optional `layoutIntentHash`
+```text
+renderSpecId
+schemeId
+homeId
+floorplanRevisionId
+sceneContractId
+roomId
+cameraId
+geometryHash
+layoutIntentHash optional
+```
 
 Do not add parallel revision id fields. If a future consumer needs extra context, pass it through a separate validation context rather than changing the frozen spec shape.
 
 The active input asset field names are nested asset refs:
 
-- `inputs.controlRender.uri`
-- `inputs.depthMap.uri`
-- `inputs.semanticMask.uri`
-- `inputs.lineMap.uri`
-- `inputs.lockedGeometryMask.uri`
-- `inputs.anchorLayoutMask.uri`
+```text
+inputs.controlRender.uri
+inputs.depthMap.uri
+inputs.semanticMask.uri
+inputs.lineMap.uri
+inputs.lockedGeometryMask.uri
+inputs.anchorLayoutMask.uri
+```
 
 These names are canonical for this branch. Do not rename them to flat URL aliases in Batch 12.
 
