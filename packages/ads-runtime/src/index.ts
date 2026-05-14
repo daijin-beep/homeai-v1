@@ -98,3 +98,17 @@ export {
   type BakeoffRunStatus,
   type BakeoffScorecard
 } from "./bakeoff/runner.js";
+
+// Batch 06 surface — gated real-provider scaffold (disabled by default).
+export {
+  evaluateRealProviderSpikeGate,
+  type GateCheck,
+  type RealProviderSpikeGateInput,
+  type RealProviderSpikeGateResult
+} from "./policy/real-provider-spike-gate.js";
+
+export {
+  DisabledRealProviderAdapter,
+  RealProviderDisabledError,
+  type DisabledRealProviderAdapterOptions
+} from "./adapters/real-provider-disabled.js";
