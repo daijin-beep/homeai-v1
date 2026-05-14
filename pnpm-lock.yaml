@@ -50,6 +50,9 @@ importers:
       '@homeai/floorplan-parser':
         specifier: workspace:*
         version: link:../../packages/floorplan-parser
+      '@homeai/render-pipeline':
+        specifier: workspace:*
+        version: link:../../packages/render-pipeline
       '@homeai/scheme-page':
         specifier: workspace:*
         version: link:../../packages/scheme-page
@@ -160,6 +163,9 @@ importers:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@homeai/creative-render-spec':
+        specifier: workspace:*
+        version: link:../creative-render-spec
     devDependencies:
       typescript:
         specifier: latest

@@ -7,7 +7,25 @@ export * from "./floorplan.js";
 export * from "./scene-contract.js";
 export * from "./camera-plan.js";
 export * from "./design-brief.js";
-export * from "./render.js";
+export {
+  RenderConstraintSchema,
+  RenderImageOutputSchema,
+  RenderImageSpecSchema,
+  RenderBatchStatusSchema,
+  RenderBatchSchema,
+  RenderImageAssetSchema,
+  RenderVerificationStatusSchema as LegacyRenderVerificationStatusSchema
+} from "./render.js";
+export type {
+  RenderImageSpec,
+  RenderBatch,
+  RenderImageAsset,
+  RenderVerificationStatus as LegacyRenderVerificationStatus
+} from "./render.js";
+export * from "./render-job.js";
+export * from "./render-gallery-eligibility.js";
+export * from "./render-candidate.js";
+export * from "./render-verification-report.js";
 export * from "./soft-decor-gps.js";
 export * from "./lead-event.js";
 export * from "./room-classification.js";
