@@ -14,5 +14,33 @@
 // RenderVerificationReport, RenderTrace, GalleryEligibilityDecision,
 // or CreativeRenderSpec. All those come from @homeai/contracts.
 //
-// Real implementation lands in commits 4-6 (Batches 04-06).
-export {};
+// Batch 04 surface — Human Review Queue + runtime snapshot.
+export {
+  HumanReviewDecisionRecordSchema,
+  HumanReviewDecisionVerbSchema,
+  HumanReviewItemSchema,
+  HumanReviewItemStatusSchema,
+  type HumanReviewDecisionRecord,
+  type HumanReviewDecisionVerb,
+  type HumanReviewItem,
+  type HumanReviewItemStatus
+} from "./human-review/contract.js";
+
+export {
+  InMemoryHumanReviewRepository,
+  createInMemoryHumanReviewRepository,
+  type HumanReviewQueueFilter,
+  type HumanReviewRepository
+} from "./human-review/repository.js";
+
+export {
+  enqueueIfReviewRequired,
+  submitHumanReviewDecision,
+  type EnqueueIfNeededInput,
+  type SubmitDecisionInput
+} from "./human-review/service.js";
+
+export {
+  buildRuntimeSnapshot,
+  type RuntimeSnapshot
+} from "./services/runtime-snapshot.js";
