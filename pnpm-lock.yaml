@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@homeai/ads-runtime':
+        specifier: workspace:*
+        version: link:../../packages/ads-runtime
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -53,6 +56,9 @@ importers:
       '@homeai/render-pipeline':
         specifier: workspace:*
         version: link:../../packages/render-pipeline
+      '@homeai/render-verifier':
+        specifier: workspace:*
+        version: link:../../packages/render-verifier
       '@homeai/scheme-page':
         specifier: workspace:*
         version: link:../../packages/scheme-page
