@@ -75,3 +75,11 @@ ADS recovery work must stay runtime-only until reviewed separately.
 - Do not merge superseded ADS branches into Batch 12.
 - Do not duplicate shared contracts outside `@homeai/contracts`.
 - Do not relax the producer-side freeze to satisfy runtime code.
+
+## Raw File Requirement
+
+This document must remain readable in GitHub raw view with real line breaks.
+
+- Do not serialize this document as escaped newline text.
+- Do not collapse this document into one physical line.
+- Keep headings, bullets, and code fences on separate lines.

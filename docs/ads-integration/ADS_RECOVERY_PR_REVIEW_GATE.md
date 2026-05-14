@@ -47,3 +47,11 @@ Block the ADS recovery PR if any of these are present:
 - runtime code imports private producer helpers instead of shared contracts
 - gallery admission bypasses verification status
 - any recovery change rewrites Batch 12 frozen field names
+
+## Raw File Requirement
+
+This document must remain readable in GitHub raw view with real line breaks.
+
+- Do not serialize this document as escaped newline text.
+- Do not collapse this document into one physical line.
+- Keep headings, bullets, and code fences on separate lines.

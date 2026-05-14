@@ -22,6 +22,7 @@ describe("Batch 12 docs markdown formatting", () => {
     expect(lines.length).toBeGreaterThan(20);
     expect(text).toMatch(/^# .+/m);
     expect(sectionHeadings.length).toBeGreaterThanOrEqual(3);
+    expect(codeFenceLines.length).toBeGreaterThanOrEqual(2);
     expect(text).not.toContain(escapedNewline);
 
     for (const line of headingLines) {

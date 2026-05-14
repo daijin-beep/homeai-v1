@@ -73,6 +73,14 @@ Batch 12 is producer-side only.
 - Do not add SKU, payment, PDF, DWG, DXF, export, construction, load-bearing, or GB compliance logic.
 - Do not use provider output as new geometry truth.
 
+## Raw File Requirement
+
+This document must remain readable in GitHub raw view with real line breaks.
+
+- Do not serialize this document as escaped newline text.
+- Do not collapse this document into one physical line.
+- Keep headings, bullets, and code fences on separate lines.
+
 ## Versioning Policy
 
 Any breaking change to `CreativeRenderSpec` requires a new reviewed batch and corresponding ADS consumer review.
