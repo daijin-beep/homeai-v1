@@ -3,6 +3,7 @@ import {
   CreativeRenderSpecDebugPayloadSchema,
   CreativeRenderSpecInputSchema,
   CreativeRenderSpecPreviewRequestSchema,
+  CreativeRenderSpecSchema,
   CreativeRenderSpecVerificationSchema,
   SchemeLiteContractSchema,
   type CreativeRenderAssetKind,
@@ -34,6 +35,13 @@ export type CreativeRenderSpecCompileOptions = {
   compilerVersion?: string;
 };
 
+export type AdsCreativeRenderSpecFreezeContext = {
+  homeId?: string;
+  floorplanRevisionId?: string;
+  sceneContractId?: string;
+  geometryHash?: string;
+};
+
 const DEFAULT_CREATED_AT = "2026-05-14T00:00:00.000Z";
 const DEFAULT_COMPILER_VERSION = "0.1.0";
 export const creativeRenderSpecFixtureTimestamp = DEFAULT_CREATED_AT;
@@ -54,6 +62,15 @@ const REQUIRED_FORBIDDEN_CHANGES = [
   "no floorplan changes",
   "no anchor zone movement"
 ];
+export const ADS_FREEZE_REQUIRED_INPUT_FIELDS = [
+  "inputs.controlRender.uri",
+  "inputs.depthMap.uri",
+  "inputs.semanticMask.uri",
+  "inputs.lineMap.uri",
+  "inputs.lockedGeometryMask.uri",
+  "inputs.anchorLayoutMask.uri"
+] as const;
+export const ADS_FREEZE_REQUIRED_FORBIDDEN_CHANGES = REQUIRED_FORBIDDEN_CHANGES;
 
 export function buildCreativeRenderSpecInputFromSchemeLite(
   rawScheme: SchemeLiteContract,
@@ -162,6 +179,51 @@ export function assertCreativeRenderSpecFullRoomCoverage(
   if (failures.length > 0) {
     throw new Error(failures.map((check) => check.message).join(" "));
   }
+}
+
+export function validateCreativeRenderSpecForADS(
+  rawSpec: unknown,
+  context: AdsCreativeRenderSpecFreezeContext = {}
+): CreativeRenderSpecVerification {
+  const checks: CreativeRenderSpecVerificationCheck[] = [];
+  const parsed = CreativeRenderSpecSchema.safeParse(clone(rawSpec));
+  if (!parsed.success) {
+    return CreativeRenderSpecVerificationSchema.parse({
+      status: "fail",
+      checks: parsed.error.issues.map((issue, index) => ({
+        checkId: `ads-freeze-schema-${index}`,
+        status: "fail",
+        message: `CreativeRenderSpec schema validation failed at ${issue.path.join(".") || "root"}: ${issue.message}`
+      }))
+    });
+  }
+
+  const spec = parsed.data;
+  addCheck(checks, "ads-freeze-render-spec-id", spec.renderSpecId.length > 0, "renderSpecId is present.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-room-id", spec.roomId.length > 0, "roomId is present.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-camera-id", spec.cameraId.length > 0, "cameraId is present.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-geometry-hash", spec.geometryHash.length > 0, "geometryHash is present.", spec.roomId, spec.renderSpecId);
+  addSpecContextChecks(checks, spec, context);
+  addSpecTraceChecks(checks, spec);
+  addSingleSpecInputChecks(checks, spec);
+  addSingleSpecConstraintChecks(checks, spec);
+  addSingleSpecDirectiveChecks(checks, spec);
+
+  return CreativeRenderSpecVerificationSchema.parse({
+    status: aggregateStatus(checks),
+    checks
+  });
+}
+
+export function assertCreativeRenderSpecForADS(
+  rawSpec: unknown,
+  context: AdsCreativeRenderSpecFreezeContext = {}
+): CreativeRenderSpec {
+  const verification = validateCreativeRenderSpecForADS(rawSpec, context);
+  if (verification.status === "fail") {
+    throw new Error(verification.checks.filter((check) => check.status === "fail").map((check) => check.message).join(" "));
+  }
+  return CreativeRenderSpecSchema.parse(clone(rawSpec));
 }
 
 export function buildCreativeRenderSpecDebugPayload(
@@ -392,6 +454,36 @@ function addSpecInputChecks(checks: CreativeRenderSpecVerificationCheck[], batch
   }
 }
 
+function addSingleSpecInputChecks(checks: CreativeRenderSpecVerificationCheck[], spec: CreativeRenderSpec): void {
+  for (const inputKey of Object.keys(spec.inputs) as Array<keyof CreativeRenderSpecInputs>) {
+    const asset = spec.inputs[inputKey];
+    addCheck(
+      checks,
+      `ads-freeze-input-uri-${spec.renderSpecId}-${inputKey}`,
+      asset.uri.length > 0,
+      `Input asset ${String(inputKey)} uri is present.`,
+      spec.roomId,
+      spec.renderSpecId
+    );
+    addCheck(
+      checks,
+      `ads-freeze-input-room-${spec.renderSpecId}-${inputKey}`,
+      asset.roomId === spec.roomId,
+      `Input asset ${String(inputKey)} roomId matches render spec.`,
+      spec.roomId,
+      spec.renderSpecId
+    );
+    addCheck(
+      checks,
+      `ads-freeze-input-hash-${spec.renderSpecId}-${inputKey}`,
+      asset.geometryHash === spec.geometryHash,
+      `Input asset ${String(inputKey)} geometryHash matches render spec.`,
+      spec.roomId,
+      spec.renderSpecId
+    );
+  }
+}
+
 function addConstraintChecks(checks: CreativeRenderSpecVerificationCheck[], batch: CreativeRenderSpecBatch): void {
   for (const spec of batch.specs) {
     const constraints = Object.values(spec.hardConstraints);
@@ -400,6 +492,19 @@ function addConstraintChecks(checks: CreativeRenderSpecVerificationCheck[], batc
       `constraints-${spec.renderSpecId}`,
       constraints.every((value) => value === true),
       "All hard constraints are locked true.",
+      spec.roomId,
+      spec.renderSpecId
+    );
+  }
+}
+
+function addSingleSpecConstraintChecks(checks: CreativeRenderSpecVerificationCheck[], spec: CreativeRenderSpec): void {
+  for (const [key, value] of Object.entries(spec.hardConstraints)) {
+    addCheck(
+      checks,
+      `ads-freeze-hard-constraint-${spec.renderSpecId}-${key}`,
+      value === true,
+      `Hard constraint ${key} is locked true.`,
       spec.roomId,
       spec.renderSpecId
     );
@@ -418,6 +523,56 @@ function addDirectiveChecks(checks: CreativeRenderSpecVerificationCheck[], batch
         spec.renderSpecId
       );
     }
+  }
+}
+
+function addSingleSpecDirectiveChecks(checks: CreativeRenderSpecVerificationCheck[], spec: CreativeRenderSpec): void {
+  for (const directive of REQUIRED_FORBIDDEN_CHANGES) {
+    addCheck(
+      checks,
+      `ads-freeze-forbidden-change-${spec.renderSpecId}-${sanitizeId(directive)}`,
+      spec.promptDirectives.forbiddenChanges.includes(directive),
+      `Forbidden change directive is present: ${directive}.`,
+      spec.roomId,
+      spec.renderSpecId
+    );
+  }
+}
+
+function addSpecTraceChecks(checks: CreativeRenderSpecVerificationCheck[], spec: CreativeRenderSpec): void {
+  addCheck(checks, "ads-freeze-trace-render-spec", spec.trace.renderSpecId === spec.renderSpecId, "Trace renderSpecId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-scheme", spec.trace.schemeId === spec.schemeId, "Trace schemeId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-home", spec.trace.homeId === spec.homeId, "Trace homeId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-floorplan", spec.trace.floorplanRevisionId === spec.floorplanRevisionId, "Trace floorplanRevisionId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-scene", spec.trace.sceneContractId === spec.sceneContractId, "Trace sceneContractId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-room", spec.trace.roomId === spec.roomId, "Trace roomId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-camera", spec.trace.cameraId === spec.cameraId, "Trace cameraId matches.", spec.roomId, spec.renderSpecId);
+  addCheck(checks, "ads-freeze-trace-geometry", spec.trace.geometryHash === spec.geometryHash, "Trace geometryHash matches.", spec.roomId, spec.renderSpecId);
+}
+
+function addSpecContextChecks(
+  checks: CreativeRenderSpecVerificationCheck[],
+  spec: CreativeRenderSpec,
+  context: AdsCreativeRenderSpecFreezeContext
+): void {
+  if (context.homeId !== undefined) {
+    addCheck(checks, "ads-freeze-context-home", spec.homeId === context.homeId, "Spec homeId matches ADS freeze context.", spec.roomId, spec.renderSpecId);
+  }
+  if (context.floorplanRevisionId !== undefined) {
+    addCheck(
+      checks,
+      "ads-freeze-context-floorplan",
+      spec.floorplanRevisionId === context.floorplanRevisionId,
+      "Spec floorplanRevisionId matches ADS freeze context.",
+      spec.roomId,
+      spec.renderSpecId
+    );
+  }
+  if (context.sceneContractId !== undefined) {
+    addCheck(checks, "ads-freeze-context-scene", spec.sceneContractId === context.sceneContractId, "Spec sceneContractId matches ADS freeze context.", spec.roomId, spec.renderSpecId);
+  }
+  if (context.geometryHash !== undefined) {
+    addCheck(checks, "ads-freeze-context-geometry", spec.geometryHash === context.geometryHash, "Spec geometryHash matches ADS freeze context.", spec.roomId, spec.renderSpecId);
   }
 }
 
