@@ -73,11 +73,17 @@ importers:
         specifier: latest
         version: 19.2.3(@types/react@19.2.14)
 
-  packages/ads-render:
+  packages/ads-runtime:
     dependencies:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@homeai/render-pipeline':
+        specifier: workspace:*
+        version: link:../render-pipeline
+      '@homeai/render-verifier':
+        specifier: workspace:*
+        version: link:../render-verifier
       zod:
         specifier: latest
         version: 4.4.3
@@ -179,6 +185,19 @@ importers:
       '@homeai/creative-render-spec':
         specifier: workspace:*
         version: link:../creative-render-spec
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/render-verifier:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: latest
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: latest
