@@ -41,6 +41,9 @@ importers:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@homeai/creative-render-spec':
+        specifier: workspace:*
+        version: link:../../packages/creative-render-spec
       '@homeai/design-kernel':
         specifier: workspace:*
         version: link:../../packages/design-kernel
@@ -85,6 +88,19 @@ importers:
       zod-to-json-schema:
         specifier: latest
         version: 3.25.2(zod@4.4.2)
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/creative-render-spec:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@homeai/scheme-page':
+        specifier: workspace:*
+        version: link:../scheme-page
     devDependencies:
       typescript:
         specifier: latest
