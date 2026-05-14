@@ -76,10 +76,13 @@ ADS recovery work must stay runtime-only until reviewed separately.
 - Do not duplicate shared contracts outside `@homeai/contracts`.
 - Do not relax the producer-side freeze to satisfy runtime code.
 
-## Raw File Requirement
+## Encoding Guard
 
-This document must remain readable in GitHub raw view with real line breaks.
+This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
+- Store the file as UTF-8 text without a byte order mark.
+- Use ordinary LF or CRLF newline bytes only.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
-- Keep headings, bullets, and code fences on separate lines.
+- Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
+- Keep headings, bullets, and code fences on separate physical lines.

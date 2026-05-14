@@ -47,7 +47,7 @@ These names are canonical for this branch. Do not rename them to flat URL aliase
 - All `hardConstraints` values must be `true`.
 - `promptDirectives.forbiddenChanges` must include locks for walls, doors, windows, room proportion, floorplan changes, and anchor zone movement.
 - Style and budget fields are pass-through render directives only.
-- Provider/runtime code must treat the spec as readonly.
+- Provider and runtime code must treat the spec as readonly.
 
 ## ADS Rejection Conditions
 
@@ -73,16 +73,19 @@ Batch 12 is producer-side only.
 - Do not add SKU, payment, PDF, DWG, DXF, export, construction, load-bearing, or GB compliance logic.
 - Do not use provider output as new geometry truth.
 
-## Raw File Requirement
+## Encoding Guard
 
-This document must remain readable in GitHub raw view with real line breaks.
+This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
+- Store the file as UTF-8 text without a byte order mark.
+- Use ordinary LF or CRLF newline bytes only.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
-- Keep headings, bullets, and code fences on separate lines.
+- Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
+- Keep headings, bullets, and code fences on separate physical lines.
 
 ## Versioning Policy
 
 Any breaking change to `CreativeRenderSpec` requires a new reviewed batch and corresponding ADS consumer review.
 
-Additive helper functions and docs are allowed only when they preserve the existing schema and do not create runtime/provider scope.
+Additive helper functions and docs are allowed only when they preserve the existing schema and do not create runtime or provider scope.

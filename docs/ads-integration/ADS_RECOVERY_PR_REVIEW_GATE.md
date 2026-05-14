@@ -27,7 +27,7 @@ Before ADS runtime work is treated as mergeable, review must confirm:
 - verifier not-evaluable checks are not mapped to pass
 - human review rejects duplicate decisions
 - human review rejects `geometryHash` drift
-- bakeoff remains mock/stub only
+- bakeoff remains mock or stub only
 - provider gate remains blocked
 - scope tests pass
 
@@ -48,10 +48,13 @@ Block the ADS recovery PR if any of these are present:
 - gallery admission bypasses verification status
 - any recovery change rewrites Batch 12 frozen field names
 
-## Raw File Requirement
+## Encoding Guard
 
-This document must remain readable in GitHub raw view with real line breaks.
+This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
+- Store the file as UTF-8 text without a byte order mark.
+- Use ordinary LF or CRLF newline bytes only.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
-- Keep headings, bullets, and code fences on separate lines.
+- Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
+- Keep headings, bullets, and code fences on separate physical lines.
