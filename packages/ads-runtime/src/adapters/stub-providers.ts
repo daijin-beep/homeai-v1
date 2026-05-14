@@ -2,13 +2,15 @@ import { MockImageAdapter, type MockImageAdapterMode } from "./mock-image-adapte
 import type { ImageGenerationProvider } from "./image-generation-provider.js";
 
 /**
- * "Stub providers" mimic the shape of a real-provider adapter (e.g. one
- * that would call GPT Image / FLUX / Qwen) but never reach the network.
- * They are MockImageAdapter under the hood with a different providerId
- * so the bakeoff harness can compare multiple "providers" side by side.
+ * "Stub providers" mimic the shape of a future real-provider adapter
+ * but never reach the network. They are MockImageAdapter instances
+ * under different providerIds so the bakeoff harness can compare
+ * multiple "providers" side by side without external dependencies.
  *
  * Per recovery task card §9: every provider in the bakeoff must be
- * mock/stub. No external API is called.
+ * mock/stub. No external API is called. The blocked-report at
+ * docs/ads/real-provider-spike-gate.md lists which real providers
+ * remain pending; this file intentionally names none of them.
  */
 export function createStubProvider(options: {
   providerId: string;
