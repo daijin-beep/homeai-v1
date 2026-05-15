@@ -7,10 +7,10 @@ export {
 } from "./contracts/ads-interface-gates.js";
 
 export {
+  AdsConsumerSpecInputsSchema,
   BudgetProfileLiteSchema,
   CreativeRenderSpecConsumerSchema,
   CreativeRenderSpecHardConstraintsSchema,
-  CreativeRenderSpecInputsSchema,
   StylePacketLiteSchema,
   type BudgetProfileLite,
   type CreativeRenderSpecConsumer,

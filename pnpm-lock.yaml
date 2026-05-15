@@ -79,6 +79,19 @@ importers:
         specifier: latest
         version: 19.2.3(@types/react@19.2.14)
 
+  packages/ads-render:
+    dependencies:
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: latest
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
   packages/ads-runtime:
     dependencies:
       '@homeai/contracts':

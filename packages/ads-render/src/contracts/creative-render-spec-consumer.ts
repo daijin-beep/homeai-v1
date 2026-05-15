@@ -2,7 +2,15 @@ import { z } from "zod";
 
 import { IdSchema } from "@homeai/contracts";
 
-export const CreativeRenderSpecInputsSchema = z
+/**
+ * ADS-consumer-side projection of CreativeRenderSpec.inputs. Canonical
+ * `CreativeRenderSpecInputsSchema` (in @homeai/contracts) carries full
+ * asset refs (assetId / kind / roomId / geometryHash / uri); ADS runtime
+ * only needs the resolved URLs for provider dispatch, so we keep a
+ * flatter shape here under a non-canonical name. Per D-036 we do not
+ * redefine the canonical schema name.
+ */
+export const AdsConsumerSpecInputsSchema = z
   .object({
     controlRenderUrl: z.string().url(),
     depthMapUrl: z.string().url(),
@@ -59,7 +67,7 @@ export const CreativeRenderSpecConsumerSchema = z
     sceneContractId: IdSchema,
     geometryHash: z.string().min(1),
     layoutIntentHash: z.string().min(1).optional(),
-    inputs: CreativeRenderSpecInputsSchema,
+    inputs: AdsConsumerSpecInputsSchema,
     hardConstraints: CreativeRenderSpecHardConstraintsSchema,
     style: StylePacketLiteSchema,
     budget: BudgetProfileLiteSchema,

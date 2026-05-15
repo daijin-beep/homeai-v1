@@ -66,10 +66,13 @@ const CANONICAL_TYPE_NAMES = [
 const TRACK_B_PACKAGE_ROOTS = [
   join(repoRoot, "packages", "render-verifier", "src"),
   join(repoRoot, "packages", "ads-runtime", "src"),
+  join(repoRoot, "packages", "ads-render", "src"),
   join(repoRoot, "apps", "web", "app", "api", "render-jobs"),
   join(repoRoot, "apps", "web", "app", "api", "render-candidates"),
   join(repoRoot, "apps", "web", "app", "api", "render-verification"),
   join(repoRoot, "apps", "web", "app", "api", "render"),
+  join(repoRoot, "apps", "web", "app", "api", "render-human-review"),
+  join(repoRoot, "apps", "web", "app", "api", "render-snapshot"),
   join(repoRoot, "apps", "web", "app", "dev", "render-debug")
 ];
 
