@@ -108,6 +108,7 @@ Batch 13 does not add runtime or product behavior.
 
 This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
+- This file is part of the Batch 13 raw formatting review guard.
 - Store the file as UTF-8 text without a byte order mark.
 - Use ordinary LF or CRLF newline bytes only.
 - Do not serialize this document as escaped newline text.

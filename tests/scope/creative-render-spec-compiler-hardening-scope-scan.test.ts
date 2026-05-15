@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// Batch 13 formatting guard: keep this file ASCII with physical LF line breaks.
+
 const repoRoot = process.cwd();
 
 describe("CreativeRenderSpec compiler hardening scope scan", () => {

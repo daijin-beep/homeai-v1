@@ -16,6 +16,8 @@ import {
 import { compileMockSchemeLite } from "@homeai/design-kernel";
 import { createDesignKernelFixtureBundle } from "../fixtures/design-kernel.js";
 
+// Batch 13 formatting guard: keep this file ASCII with physical LF line breaks.
+
 describe("CreativeRenderSpec compiler hardening", () => {
   it("compiles ADS-consumable specs for every valid room and renderable camera", () => {
     const input = compilerFixtureInput({ addSecondCameraToFirstRoom: true });
