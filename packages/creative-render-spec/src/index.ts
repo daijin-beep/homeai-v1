@@ -5,6 +5,9 @@ import {
   CreativeRenderSpecPreviewRequestSchema,
   CreativeRenderSpecSchema,
   CreativeRenderSpecVerificationSchema,
+  CreativeRenderAssetRefSchema,
+  P1RoomCameraPlanBatchSchema,
+  P1SceneContractV02Schema,
   SchemeLiteContractSchema,
   type CreativeRenderAssetKind,
   type CreativeRenderAssetRef,
@@ -17,6 +20,10 @@ import {
   type CreativeRenderSpecPreviewRequest,
   type CreativeRenderSpecVerification,
   type CreativeRenderSpecVerificationCheck,
+  type DesignKernelStatus,
+  type P1RoomCameraPlanBatch,
+  type P1RoomType,
+  type P1SceneContractV02,
   type RoomSchemeLite,
   type SchemeLiteContract
 } from "@homeai/contracts";
@@ -53,6 +60,7 @@ const REQUIRED_ASSET_KINDS: CreativeRenderAssetKind[] = [
   "locked_geometry_mask",
   "anchor_layout_mask"
 ];
+export const CREATIVE_RENDER_REQUIRED_ASSET_KINDS = REQUIRED_ASSET_KINDS;
 const REQUIRED_FORBIDDEN_CHANGES = [
   "no wall changes",
   "no door changes",
@@ -60,7 +68,9 @@ const REQUIRED_FORBIDDEN_CHANGES = [
   "no room proportion changes",
   "no structural changes",
   "no floorplan changes",
-  "no anchor zone movement"
+  "no anchor zone movement",
+  "no geometryHash changes",
+  "no confirmed geometry changes"
 ];
 export const ADS_FREEZE_REQUIRED_INPUT_FIELDS = [
   "inputs.controlRender.uri",
@@ -71,6 +81,89 @@ export const ADS_FREEZE_REQUIRED_INPUT_FIELDS = [
   "inputs.anchorLayoutMask.uri"
 ] as const;
 export const ADS_FREEZE_REQUIRED_FORBIDDEN_CHANGES = REQUIRED_FORBIDDEN_CHANGES;
+
+export type CreativeRenderSpecCoverageStatus =
+  | "covered"
+  | "cautious"
+  | "non_renderable"
+  | "missing_scheme_room"
+  | "missing_camera_plan"
+  | "missing_asset"
+  | "insufficient_specs"
+  | "geometry_hash_mismatch"
+  | "invalid_spec";
+
+export type CreativeRenderSpecCompilerIssue = {
+  issueId: string;
+  severity: "info" | "warning" | "blocking";
+  code: string;
+  message: string;
+  roomId?: string;
+  cameraId?: string;
+  assetKind?: CreativeRenderAssetKind;
+};
+
+export type CreativeRenderSpecCoveragePolicy = {
+  includeCautiousRooms: boolean;
+  minSpecsPerValidRoom: number;
+};
+
+export type CreativeRenderSpecRoomCoverageSummary = {
+  roomId: string;
+  roomType: P1RoomType;
+  status: CreativeRenderSpecCoverageStatus;
+  renderableCameraCount: number;
+  emittedSpecCount: number;
+  requiredSpecCount: number;
+  cameraIds: string[];
+  specIds: string[];
+  issueIds: string[];
+};
+
+export type CreativeRenderSpecBatchSummary = {
+  status: DesignKernelStatus;
+  policy: CreativeRenderSpecCoveragePolicy;
+  sceneRoomCount: number;
+  coveredRoomCount: number;
+  cautiousRoomCount: number;
+  nonRenderableRoomCount: number;
+  missingRoomCount: number;
+  renderableCameraCount: number;
+  emittedSpecCount: number;
+  rooms: CreativeRenderSpecRoomCoverageSummary[];
+};
+
+export type CreativeRenderSpecCompilerTrace = {
+  traceId: string;
+  compilerName: "deterministic_creative_render_spec_compiler";
+  compilerVersion: string;
+  mode: "contract_only";
+  homeId: string;
+  floorplanRevisionId: string;
+  sceneContractId: string;
+  geometryHash: string;
+  networkCalls: false;
+  startedAt: string;
+  completedAt: string;
+};
+
+export type CreativeRenderSpecCompilerInput = {
+  schemeLiteContract: SchemeLiteContract;
+  sceneContract: P1SceneContractV02;
+  cameraPlan: P1RoomCameraPlanBatch;
+  controlSceneAssets: CreativeRenderAssetRef[];
+  policy?: Partial<CreativeRenderSpecCoveragePolicy>;
+  createdAt?: string;
+  compilerVersion?: string;
+  traceId?: string;
+};
+
+export type CreativeRenderSpecCompilerOutput = {
+  specs: CreativeRenderSpec[];
+  summary: CreativeRenderSpecBatchSummary;
+  issues: CreativeRenderSpecCompilerIssue[];
+  trace: CreativeRenderSpecCompilerTrace;
+};
 
 export function buildCreativeRenderSpecInputFromSchemeLite(
   rawScheme: SchemeLiteContract,
@@ -265,6 +358,180 @@ export function createCreativeRenderSpecFixtureInput(
   });
 }
 
+export function compileCreativeRenderSpecsForScheme(
+  rawInput: CreativeRenderSpecCompilerInput
+): CreativeRenderSpecCompilerOutput {
+  const input = parseCompilerInput(rawInput);
+  const trace = buildCompilerTrace(input);
+  const traceIssues = traceAlignmentIssues(input);
+
+  if (traceIssues.length > 0) {
+    return deepFreeze({
+      specs: [],
+      summary: buildCompilerSummary({
+        policy: input.policy,
+        rooms: input.sceneContract.rooms.map((room) => ({
+          roomId: room.roomId,
+          roomType: room.roomType,
+          status: "geometry_hash_mismatch",
+          renderableCameraCount: 0,
+          emittedSpecCount: 0,
+          requiredSpecCount: input.policy.minSpecsPerValidRoom,
+          cameraIds: [],
+          specIds: [],
+          issueIds: traceIssues.map((issue) => issue.issueId)
+        })),
+        issues: traceIssues
+      }),
+      issues: traceIssues,
+      trace
+    });
+  }
+
+  const specs: CreativeRenderSpec[] = [];
+  const issues: CreativeRenderSpecCompilerIssue[] = [];
+  const roomCoverage: CreativeRenderSpecRoomCoverageSummary[] = [];
+  const schemeRoomsById = new Map(input.schemeLiteContract.rooms.map((room) => [room.roomId, room]));
+  const cameraPlansByRoomId = new Map(input.cameraPlan.roomPlans.map((plan) => [plan.roomId, plan]));
+
+  for (const sceneRoom of [...input.sceneContract.rooms].sort((a, b) => a.roomId.localeCompare(b.roomId))) {
+    const schemeRoom = schemeRoomsById.get(sceneRoom.roomId);
+    const cameraPlan = cameraPlansByRoomId.get(sceneRoom.roomId);
+    const roomIssues: CreativeRenderSpecCompilerIssue[] = [];
+    const roomSpecIds: string[] = [];
+    const cautious = isCautiousRoomType(sceneRoom.roomType);
+
+    if (schemeRoom === undefined) {
+      roomIssues.push(compilerIssue({
+        code: "SCHEME_ROOM_MISSING",
+        severity: "blocking",
+        message: `Scene room ${sceneRoom.roomId} has no RoomSchemeLite.`,
+        roomId: sceneRoom.roomId
+      }));
+      issues.push(...roomIssues);
+      roomCoverage.push(roomCoverageSummary(sceneRoom, "missing_scheme_room", input.policy, [], roomSpecIds, roomIssues));
+      continue;
+    }
+
+    if (cautious && !input.policy.includeCautiousRooms) {
+      roomIssues.push(compilerIssue({
+        code: "ROOM_NON_RENDERABLE_BY_POLICY",
+        severity: "warning",
+        message: `Room ${sceneRoom.roomId} is excluded by the cautious-room policy.`,
+        roomId: sceneRoom.roomId
+      }));
+      issues.push(...roomIssues);
+      roomCoverage.push(roomCoverageSummary(sceneRoom, "non_renderable", input.policy, [], roomSpecIds, roomIssues));
+      continue;
+    }
+
+    if (cameraPlan === undefined) {
+      roomIssues.push(compilerIssue({
+        code: "CAMERA_PLAN_MISSING",
+        severity: "blocking",
+        message: `Scene room ${sceneRoom.roomId} has no camera plan.`,
+        roomId: sceneRoom.roomId
+      }));
+      issues.push(...roomIssues);
+      roomCoverage.push(roomCoverageSummary(sceneRoom, "missing_camera_plan", input.policy, [], roomSpecIds, roomIssues));
+      continue;
+    }
+
+    const renderableCameras = [...cameraPlan.cameras]
+      .filter((camera) => camera.valid)
+      .sort((a, b) => a.cameraId.localeCompare(b.cameraId));
+
+    if (renderableCameras.length === 0) {
+      roomIssues.push(compilerIssue({
+        code: "CAMERA_PLAN_HAS_NO_RENDERABLE_CAMERA",
+        severity: "blocking",
+        message: `Scene room ${sceneRoom.roomId} has no renderable cameras.`,
+        roomId: sceneRoom.roomId
+      }));
+    }
+
+    for (const camera of renderableCameras) {
+      const inputs = assetsForCompilerCamera(input.controlSceneAssets, sceneRoom.roomId, camera.cameraId, input.sceneContract.geometryHash);
+      if ("issues" in inputs) {
+        roomIssues.push(...inputs.issues);
+        continue;
+      }
+
+      const spec = compileCameraSpec({
+        scheme: input.schemeLiteContract,
+        room: schemeRoom,
+        camera,
+        inputs,
+        compilerVersion: input.compilerVersion
+      });
+      const verification = validateCreativeRenderSpecForADS(spec, {
+        homeId: input.sceneContract.homeId,
+        floorplanRevisionId: input.sceneContract.canonicalRevisionId,
+        sceneContractId: input.sceneContract.sceneContractId,
+        geometryHash: input.sceneContract.geometryHash
+      });
+
+      if (verification.status === "fail") {
+        roomIssues.push(compilerIssue({
+          code: "COMPILED_SPEC_REJECTED_BY_ADS_FREEZE",
+          severity: "blocking",
+          message: verification.checks
+            .filter((check) => check.status === "fail")
+            .map((check) => check.message)
+            .join(" "),
+          roomId: sceneRoom.roomId,
+          cameraId: camera.cameraId
+        }));
+        continue;
+      }
+
+      specs.push(spec);
+      roomSpecIds.push(spec.renderSpecId);
+    }
+
+    if (roomSpecIds.length < input.policy.minSpecsPerValidRoom) {
+      roomIssues.push(compilerIssue({
+        code: "ROOM_RENDER_SPEC_MINIMUM_NOT_MET",
+        severity: "blocking",
+        message: `Room ${sceneRoom.roomId} emitted ${roomSpecIds.length} specs; ${input.policy.minSpecsPerValidRoom} required.`,
+        roomId: sceneRoom.roomId
+      }));
+    }
+
+    issues.push(...roomIssues);
+    roomCoverage.push(roomCoverageSummary(
+      sceneRoom,
+      coverageStatusForRoom(roomIssues, cautious),
+      input.policy,
+      renderableCameras,
+      roomSpecIds,
+      roomIssues
+    ));
+  }
+
+  return deepFreeze({
+    specs: specs.map((spec) => CreativeRenderSpecSchema.parse(spec)),
+    summary: buildCompilerSummary({
+      policy: input.policy,
+      rooms: roomCoverage,
+      issues
+    }),
+    issues,
+    trace
+  });
+}
+
+export function validateCreativeRenderSpecCoverage(
+  rawInput: CreativeRenderSpecCompilerInput
+): Pick<CreativeRenderSpecCompilerOutput, "summary" | "issues" | "trace"> {
+  const output = compileCreativeRenderSpecsForScheme(rawInput);
+  return deepFreeze({
+    summary: output.summary,
+    issues: output.issues,
+    trace: output.trace
+  });
+}
+
 function compileRoomSpec(
   input: CreativeRenderSpecInput,
   room: RoomSchemeLite,
@@ -336,6 +603,344 @@ function compileRoomSpec(
       compilerVersion
     }
   };
+}
+
+type CompilerCamera = P1RoomCameraPlanBatch["roomPlans"][number]["cameras"][number];
+
+type ParsedCreativeRenderSpecCompilerInput = {
+  schemeLiteContract: SchemeLiteContract;
+  sceneContract: P1SceneContractV02;
+  cameraPlan: P1RoomCameraPlanBatch;
+  controlSceneAssets: CreativeRenderAssetRef[];
+  policy: CreativeRenderSpecCoveragePolicy;
+  createdAt: string;
+  compilerVersion: string;
+  traceId: string;
+};
+
+function parseCompilerInput(rawInput: CreativeRenderSpecCompilerInput): ParsedCreativeRenderSpecCompilerInput {
+  const schemeLiteContract = SchemeLiteContractSchema.parse(clone(rawInput.schemeLiteContract));
+  const sceneContract = P1SceneContractV02Schema.parse(clone(rawInput.sceneContract));
+  const cameraPlan = P1RoomCameraPlanBatchSchema.parse(clone(rawInput.cameraPlan));
+  const controlSceneAssets = rawInput.controlSceneAssets.map((asset) => CreativeRenderAssetRefSchema.parse(clone(asset)));
+  const policy = normalizeCompilerPolicy(rawInput.policy);
+  const createdAt = rawInput.createdAt ?? DEFAULT_CREATED_AT;
+  const compilerVersion = rawInput.compilerVersion ?? DEFAULT_COMPILER_VERSION;
+
+  return {
+    schemeLiteContract,
+    sceneContract,
+    cameraPlan,
+    controlSceneAssets,
+    policy,
+    createdAt,
+    compilerVersion,
+    traceId: rawInput.traceId ?? `crs-compiler-trace-${schemeLiteContract.schemeId}`
+  };
+}
+
+function normalizeCompilerPolicy(
+  policy: Partial<CreativeRenderSpecCoveragePolicy> | undefined
+): CreativeRenderSpecCoveragePolicy {
+  const minSpecs = policy?.minSpecsPerValidRoom ?? 1;
+  return {
+    includeCautiousRooms: policy?.includeCautiousRooms ?? true,
+    minSpecsPerValidRoom: Number.isInteger(minSpecs) && minSpecs > 0 ? minSpecs : 1
+  };
+}
+
+function buildCompilerTrace(input: ParsedCreativeRenderSpecCompilerInput): CreativeRenderSpecCompilerTrace {
+  return {
+    traceId: input.traceId,
+    compilerName: "deterministic_creative_render_spec_compiler",
+    compilerVersion: input.compilerVersion,
+    mode: "contract_only",
+    homeId: input.sceneContract.homeId,
+    floorplanRevisionId: input.sceneContract.canonicalRevisionId,
+    sceneContractId: input.sceneContract.sceneContractId,
+    geometryHash: input.sceneContract.geometryHash,
+    networkCalls: false,
+    startedAt: input.createdAt,
+    completedAt: input.createdAt
+  };
+}
+
+function traceAlignmentIssues(input: ParsedCreativeRenderSpecCompilerInput): CreativeRenderSpecCompilerIssue[] {
+  const issues: CreativeRenderSpecCompilerIssue[] = [];
+  const scheme = input.schemeLiteContract;
+  const scene = input.sceneContract;
+  const cameraPlan = input.cameraPlan;
+
+  addTraceAlignmentIssue(issues, "HOME_ID_MISMATCH", scheme.homeId === scene.homeId, "SchemeLite homeId must match SceneContract homeId.");
+  addTraceAlignmentIssue(
+    issues,
+    "FLOORPLAN_REVISION_ID_MISMATCH",
+    scheme.floorplanRevisionId === scene.canonicalRevisionId,
+    "SchemeLite floorplanRevisionId must match SceneContract canonicalRevisionId."
+  );
+  addTraceAlignmentIssue(
+    issues,
+    "SCENE_CONTRACT_ID_MISMATCH",
+    scheme.sceneContractId === scene.sceneContractId,
+    "SchemeLite sceneContractId must match SceneContract sceneContractId."
+  );
+  addTraceAlignmentIssue(
+    issues,
+    "GEOMETRY_HASH_MISMATCH",
+    scheme.geometryHash === scene.geometryHash,
+    "SchemeLite geometryHash must match SceneContract geometryHash."
+  );
+  addTraceAlignmentIssue(issues, "CAMERA_PLAN_HOME_ID_MISMATCH", cameraPlan.homeId === scene.homeId, "CameraPlan homeId must match SceneContract homeId.");
+  addTraceAlignmentIssue(
+    issues,
+    "CAMERA_PLAN_REVISION_ID_MISMATCH",
+    cameraPlan.canonicalRevisionId === scene.canonicalRevisionId,
+    "CameraPlan canonicalRevisionId must match SceneContract canonicalRevisionId."
+  );
+  addTraceAlignmentIssue(
+    issues,
+    "CAMERA_PLAN_SCENE_ID_MISMATCH",
+    cameraPlan.sceneContractId === scene.sceneContractId,
+    "CameraPlan sceneContractId must match SceneContract sceneContractId."
+  );
+  addTraceAlignmentIssue(
+    issues,
+    "CAMERA_PLAN_GEOMETRY_HASH_MISMATCH",
+    cameraPlan.geometryHash === scene.geometryHash,
+    "CameraPlan geometryHash must match SceneContract geometryHash."
+  );
+
+  return issues;
+}
+
+function addTraceAlignmentIssue(
+  issues: CreativeRenderSpecCompilerIssue[],
+  code: string,
+  passes: boolean,
+  message: string
+): void {
+  if (!passes) {
+    issues.push(compilerIssue({ code, severity: "blocking", message }));
+  }
+}
+
+function compileCameraSpec(input: {
+  scheme: SchemeLiteContract;
+  room: RoomSchemeLite;
+  camera: CompilerCamera;
+  inputs: CreativeRenderSpecInputs;
+  compilerVersion: string;
+}): CreativeRenderSpec {
+  const renderSpecId = `crs-${sanitizeId(input.scheme.schemeId)}-${sanitizeId(input.room.roomId)}-${sanitizeId(input.camera.cameraId)}`;
+
+  return {
+    renderSpecId,
+    schemeId: input.scheme.schemeId,
+    homeId: input.scheme.homeId,
+    floorplanRevisionId: input.scheme.floorplanRevisionId,
+    sceneContractId: input.scheme.sceneContractId,
+    roomId: input.room.roomId,
+    roomType: input.room.roomType,
+    cameraId: input.camera.cameraId,
+    geometryHash: input.scheme.geometryHash,
+    ...(input.scheme.layoutIntentHash === undefined ? {} : { layoutIntentHash: input.scheme.layoutIntentHash }),
+    sourceRoomSchemeId: input.room.roomSchemeId,
+    inputs: input.inputs,
+    hardConstraints: {
+      preserveWalls: true,
+      preserveDoors: true,
+      preserveWindows: true,
+      preserveRoomProportion: true,
+      preserveAnchorZones: true
+    },
+    style: {
+      displayName: input.scheme.style.displayName,
+      tags: input.scheme.style.tags,
+      palette: input.scheme.style.palette,
+      materialTags: input.scheme.style.materialTags,
+      avoidTokens: input.scheme.style.avoidTokens
+    },
+    budget: {
+      band: input.scheme.budget.band,
+      currency: input.scheme.budget.currency,
+      ...(input.scheme.budget.minCny === undefined ? {} : { minCny: input.scheme.budget.minCny }),
+      ...(input.scheme.budget.maxCny === undefined ? {} : { maxCny: input.scheme.budget.maxCny })
+    },
+    anchorRefs: input.room.anchorRefs.map((ref) => ref.anchorId).sort(),
+    ...(input.room.layoutIntentRefs.length === 0 ? {} : { layoutIntentRefs: input.room.layoutIntentRefs.map((ref) => ref.placeholderId).sort() }),
+    promptDirectives: {
+      positive: [
+        input.scheme.brief.summary,
+        input.room.designIntent,
+        ...input.room.keyMoves,
+        input.room.storageStrategy,
+        ...input.room.circulationNotes,
+        ...input.room.lightingNotes
+      ],
+      negative: uniqueSorted([...input.scheme.brief.avoid, ...input.scheme.style.avoidTokens]),
+      forbiddenChanges: REQUIRED_FORBIDDEN_CHANGES
+    },
+    trace: {
+      renderSpecId,
+      schemeId: input.scheme.schemeId,
+      homeId: input.scheme.homeId,
+      floorplanRevisionId: input.scheme.floorplanRevisionId,
+      sceneContractId: input.scheme.sceneContractId,
+      roomId: input.room.roomId,
+      cameraId: input.camera.cameraId,
+      geometryHash: input.scheme.geometryHash,
+      ...(input.scheme.layoutIntentHash === undefined ? {} : { layoutIntentHash: input.scheme.layoutIntentHash }),
+      source: "contract_compiler",
+      compilerVersion: input.compilerVersion
+    }
+  };
+}
+
+function assetsForCompilerCamera(
+  assets: readonly CreativeRenderAssetRef[],
+  roomId: string,
+  cameraId: string,
+  geometryHash: string
+): CreativeRenderSpecInputs | { issues: CreativeRenderSpecCompilerIssue[] } {
+  const issues: CreativeRenderSpecCompilerIssue[] = [];
+  const byKind = new Map(assets.filter((asset) => asset.roomId === roomId).map((asset) => [asset.kind, asset]));
+
+  for (const kind of REQUIRED_ASSET_KINDS) {
+    const asset = byKind.get(kind);
+    if (asset === undefined) {
+      issues.push(compilerIssue({
+        code: "REQUIRED_INPUT_ASSET_MISSING",
+        severity: "blocking",
+        message: `Missing ${kind} asset for room ${roomId}.`,
+        roomId,
+        cameraId,
+        assetKind: kind
+      }));
+      continue;
+    }
+    if (asset.geometryHash !== geometryHash) {
+      issues.push(compilerIssue({
+        code: "ASSET_GEOMETRY_HASH_MISMATCH",
+        severity: "blocking",
+        message: `Asset ${asset.assetId} geometryHash must match SceneContract geometryHash.`,
+        roomId,
+        cameraId,
+        assetKind: kind
+      }));
+    }
+  }
+
+  if (issues.length > 0) {
+    return { issues };
+  }
+
+  return {
+    controlRender: assetByKind(byKind, "control_render"),
+    depthMap: assetByKind(byKind, "depth_map"),
+    semanticMask: assetByKind(byKind, "semantic_mask"),
+    lineMap: assetByKind(byKind, "line_map"),
+    lockedGeometryMask: assetByKind(byKind, "locked_geometry_mask"),
+    anchorLayoutMask: assetByKind(byKind, "anchor_layout_mask")
+  };
+}
+
+function roomCoverageSummary(
+  room: P1SceneContractV02["rooms"][number],
+  status: CreativeRenderSpecCoverageStatus,
+  policy: CreativeRenderSpecCoveragePolicy,
+  cameras: readonly CompilerCamera[],
+  specIds: readonly string[],
+  issues: readonly CreativeRenderSpecCompilerIssue[]
+): CreativeRenderSpecRoomCoverageSummary {
+  return {
+    roomId: room.roomId,
+    roomType: room.roomType,
+    status,
+    renderableCameraCount: cameras.length,
+    emittedSpecCount: specIds.length,
+    requiredSpecCount: status === "non_renderable" ? 0 : policy.minSpecsPerValidRoom,
+    cameraIds: cameras.map((camera) => camera.cameraId).sort(),
+    specIds: [...specIds].sort(),
+    issueIds: issues.map((issue) => issue.issueId).sort()
+  };
+}
+
+function coverageStatusForRoom(
+  issues: readonly CreativeRenderSpecCompilerIssue[],
+  cautious: boolean
+): CreativeRenderSpecCoverageStatus {
+  if (issues.some((issue) => issue.code === "REQUIRED_INPUT_ASSET_MISSING" || issue.code === "ASSET_GEOMETRY_HASH_MISMATCH")) {
+    return "missing_asset";
+  }
+  if (issues.some((issue) => issue.code === "ROOM_RENDER_SPEC_MINIMUM_NOT_MET")) {
+    return "insufficient_specs";
+  }
+  if (issues.some((issue) => issue.code === "COMPILED_SPEC_REJECTED_BY_ADS_FREEZE")) {
+    return "invalid_spec";
+  }
+  if (issues.some((issue) => issue.severity === "blocking")) {
+    return "missing_camera_plan";
+  }
+  return cautious ? "cautious" : "covered";
+}
+
+function buildCompilerSummary(input: {
+  policy: CreativeRenderSpecCoveragePolicy;
+  rooms: CreativeRenderSpecRoomCoverageSummary[];
+  issues: readonly CreativeRenderSpecCompilerIssue[];
+}): CreativeRenderSpecBatchSummary {
+  return {
+    status: aggregateCompilerStatus(input.issues),
+    policy: input.policy,
+    sceneRoomCount: input.rooms.length,
+    coveredRoomCount: input.rooms.filter((room) => room.status === "covered" || room.status === "cautious").length,
+    cautiousRoomCount: input.rooms.filter((room) => room.status === "cautious").length,
+    nonRenderableRoomCount: input.rooms.filter((room) => room.status === "non_renderable").length,
+    missingRoomCount: input.rooms.filter((room) => room.status !== "covered" && room.status !== "cautious" && room.status !== "non_renderable").length,
+    renderableCameraCount: input.rooms.reduce((sum, room) => sum + room.renderableCameraCount, 0),
+    emittedSpecCount: input.rooms.reduce((sum, room) => sum + room.emittedSpecCount, 0),
+    rooms: [...input.rooms].sort((a, b) => a.roomId.localeCompare(b.roomId))
+  };
+}
+
+function aggregateCompilerStatus(issues: readonly CreativeRenderSpecCompilerIssue[]): DesignKernelStatus {
+  if (issues.some((issue) => issue.severity === "blocking")) {
+    return "fail";
+  }
+  if (issues.some((issue) => issue.severity === "warning")) {
+    return "warning";
+  }
+  return "pass";
+}
+
+function compilerIssue(input: {
+  code: string;
+  severity: CreativeRenderSpecCompilerIssue["severity"];
+  message: string;
+  roomId?: string;
+  cameraId?: string;
+  assetKind?: CreativeRenderAssetKind;
+}): CreativeRenderSpecCompilerIssue {
+  const parts = [
+    "compiler",
+    input.code.toLowerCase(),
+    input.roomId ?? "batch",
+    input.cameraId ?? "all",
+    input.assetKind ?? "none"
+  ];
+  return {
+    issueId: sanitizeId(parts.join("-")),
+    severity: input.severity,
+    code: input.code,
+    message: input.message,
+    ...(input.roomId === undefined ? {} : { roomId: input.roomId }),
+    ...(input.cameraId === undefined ? {} : { cameraId: input.cameraId }),
+    ...(input.assetKind === undefined ? {} : { assetKind: input.assetKind })
+  };
+}
+
+function isCautiousRoomType(roomType: P1RoomType): boolean {
+  return roomType === "kitchen" || roomType === "bathroom";
 }
 
 function buildFixtureCameraRefs(scheme: SchemeLiteContract): CreativeRenderCameraRef[] {
