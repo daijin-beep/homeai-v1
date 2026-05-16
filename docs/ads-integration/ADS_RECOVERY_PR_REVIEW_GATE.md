@@ -69,7 +69,8 @@ Block the ADS recovery PR if any of these are present:
 This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
 - Store the file as UTF-8 text without a byte order mark.
-- Use ordinary LF or CRLF newline bytes only.
+- Use ordinary LF newline bytes only.
+- Do not include carriage return bytes.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
 - Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
@@ -81,6 +82,6 @@ Reviewers must be able to fetch this exact file from a commit raw URL and see mu
 
 - The first line must be `# ADS Recovery PR Review Gate`.
 - The second physical line must be blank.
-- The third physical line must be `## Required PR Handling`.
+- The third physical line must be `## Current PR Handling`.
 - The raw file must have more than thirty physical LF bytes.
 - The raw file must not contain non-ASCII bytes.

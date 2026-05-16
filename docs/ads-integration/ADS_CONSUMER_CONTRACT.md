@@ -99,7 +99,8 @@ ADS recovery work must stay runtime-only until reviewed separately.
 This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
 - Store the file as UTF-8 text without a byte order mark.
-- Use ordinary LF or CRLF newline bytes only.
+- Use ordinary LF newline bytes only.
+- Do not include carriage return bytes.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
 - Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
