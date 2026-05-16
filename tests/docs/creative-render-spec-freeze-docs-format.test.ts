@@ -5,6 +5,7 @@ const files = [
   "docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md",
   "docs/ads-integration/ADS_CONSUMER_CONTRACT.md",
   "docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md",
+  "docs/ads-integration/CREATIVE_RENDER_SPEC_ADS_DISPATCH_PAYLOAD.md",
   "tests/docs/creative-render-spec-freeze-docs-format.test.ts"
 ];
 
@@ -13,6 +14,7 @@ const minimumLfBytesByPath = new Map<string, number>([
   ["docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md", 50],
   ["docs/ads-integration/ADS_CONSUMER_CONTRACT.md", 50],
   ["docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md", 30],
+  ["docs/ads-integration/CREATIVE_RENDER_SPEC_ADS_DISPATCH_PAYLOAD.md", 50],
   ["tests/docs/creative-render-spec-freeze-docs-format.test.ts", 25]
 ]);
 
