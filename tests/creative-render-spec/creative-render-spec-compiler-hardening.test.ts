@@ -8,6 +8,7 @@ import type {
 import {
   ADS_FREEZE_REQUIRED_FORBIDDEN_CHANGES,
   CREATIVE_RENDER_REQUIRED_ASSET_KINDS,
+  buildCreativeRenderSpecAdsDispatchPayload,
   compileCreativeRenderSpecsForScheme,
   validateCreativeRenderSpecCoverage,
   validateCreativeRenderSpecForADS,
@@ -96,6 +97,25 @@ describe("CreativeRenderSpec compiler hardening", () => {
     expect(output.specs.some((spec) => spec.roomId === targetRoomId)).toBe(false);
   });
 
+  it("maps missing required assets to render_asset_pending dispatch status", () => {
+    const input = compilerFixtureInput();
+    const targetRoomId = input.sceneContract.rooms[0]?.roomId;
+    if (targetRoomId === undefined) {
+      throw new Error("Expected a scene room.");
+    }
+    const dispatch = buildCreativeRenderSpecAdsDispatchPayload({
+      ...input,
+      controlSceneAssets: input.controlSceneAssets.filter((asset) =>
+        !(asset.roomId === targetRoomId && asset.kind === "control_render")
+      )
+    });
+    const targetRoom = dispatch.rooms.find((room) => room.roomId === targetRoomId);
+
+    expect(targetRoom?.status).toBe("render_asset_pending");
+    expect(targetRoom?.renderSpecIds).toEqual([]);
+    expect(targetRoom?.issueIds.length).toBeGreaterThan(0);
+  });
+
   it("fails closed on geometryHash mismatch and emits no valid specs", () => {
     const input = compilerFixtureInput();
     const mismatched = replaceSchemeGeometryHash(input.schemeLiteContract, `sha256:${"a".repeat(64)}`);
@@ -136,6 +156,21 @@ describe("CreativeRenderSpec compiler hardening", () => {
     expect(bathroomRoom?.status).toBe("non_renderable");
     expect(bathroomRoom?.emittedSpecCount).toBe(0);
     expect(output.summary.rooms).toHaveLength(input.sceneContract.rooms.length);
+  });
+
+  it("maps producer-policy excluded rooms to render_ineligible dispatch status", () => {
+    const input = withFirstRoomType(compilerFixtureInput(), "bathroom");
+    const dispatch = buildCreativeRenderSpecAdsDispatchPayload({
+      ...input,
+      policy: {
+        includeCautiousRooms: false,
+        minSpecsPerValidRoom: 1
+      }
+    });
+    const bathroomRoom = dispatch.rooms.find((room) => room.roomType === "bathroom");
+
+    expect(bathroomRoom?.status).toBe("render_ineligible");
+    expect(bathroomRoom?.renderSpecIds).toEqual([]);
   });
 
   it("preserves geometryHash, required assets, hard constraints, and forbidden directives", () => {

@@ -21,6 +21,7 @@ describe("CreativeRenderSpec freeze documentation", () => {
   it("documents ADS consumer boundary and recovery PR gate", () => {
     const consumer = read("docs/ads-integration/ADS_CONSUMER_CONTRACT.md");
     const gate = read("docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md");
+    const dispatch = read("docs/ads-integration/CREATIVE_RENDER_SPEC_ADS_DISPATCH_PAYLOAD.md");
 
     expect(consumer).toContain("Codex does not import ADS runtime packages");
     expect(consumer).toContain("CreativeRenderSpec` freeze is active, not deferred");
@@ -30,6 +31,10 @@ describe("CreativeRenderSpec freeze documentation", () => {
     expect(gate).toContain("https://github.com/daijin-beep/homeai-v1/pull/10");
     expect(gate).toContain("ads/rebased-batch03-06-verifier-debug-bakeoff-gated-provider");
     expect(gate).toContain("render_verifier_l1");
+    expect(dispatch).toContain("CreativeRenderSpecDispatchPayloadSchema");
+    expect(dispatch).toContain("render_asset_pending");
+    expect(dispatch).toContain("render_ineligible");
+    expect(dispatch).toContain("must not call `/api/render-snapshot`");
   });
 });
 
