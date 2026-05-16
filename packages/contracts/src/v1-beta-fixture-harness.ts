@@ -145,8 +145,58 @@ export const V1BetaFixtureHarnessPayloadSchema = z
     }
   });
 
+export const V1BetaReleaseGateStatusSchema = z.enum(["pass", "fail"]);
+
+export const V1BetaReleaseGateCheckSchema = z
+  .object({
+    checkId: IdSchema,
+    status: V1BetaReleaseGateStatusSchema,
+    message: z.string().min(1)
+  })
+  .strict();
+
+export const V1BetaReleaseGateReportSchema = z
+  .object({
+    version: z.literal("0.1"),
+    source: z.literal("deterministic_beta_release_gate"),
+    scenario: V1BetaFixtureHarnessScenarioSchema,
+    status: V1BetaReleaseGateStatusSchema,
+    trace: V1BetaFixtureHarnessTraceSchema,
+    checks: z.array(V1BetaReleaseGateCheckSchema).min(1),
+    failedCheckCount: z.number().int().nonnegative(),
+    generatedAt: TimestampSchema
+  })
+  .strict()
+  .superRefine((report, ctx) => {
+    const failed = report.checks.filter((check) => check.status === "fail").length;
+    if (report.failedCheckCount !== failed) {
+      ctx.addIssue({
+        code: "custom",
+        message: "failedCheckCount must match failed release gate checks",
+        path: ["failedCheckCount"]
+      });
+    }
+    if (report.status === "pass" && failed > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "pass status requires zero failed checks",
+        path: ["status"]
+      });
+    }
+    if (report.status === "fail" && failed === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "fail status requires failed checks",
+        path: ["status"]
+      });
+    }
+  });
+
 export type V1BetaFixtureHarnessScenario = z.infer<typeof V1BetaFixtureHarnessScenarioSchema>;
 export type V1BetaFixtureHarnessTrace = z.infer<typeof V1BetaFixtureHarnessTraceSchema>;
 export type V1BetaFixtureHarnessGuardrails = z.infer<typeof V1BetaFixtureHarnessGuardrailsSchema>;
 export type V1BetaFixtureHarnessSummary = z.infer<typeof V1BetaFixtureHarnessSummarySchema>;
 export type V1BetaFixtureHarnessPayload = z.infer<typeof V1BetaFixtureHarnessPayloadSchema>;
+export type V1BetaReleaseGateStatus = z.infer<typeof V1BetaReleaseGateStatusSchema>;
+export type V1BetaReleaseGateCheck = z.infer<typeof V1BetaReleaseGateCheckSchema>;
+export type V1BetaReleaseGateReport = z.infer<typeof V1BetaReleaseGateReportSchema>;

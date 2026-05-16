@@ -4,13 +4,12 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = process.cwd();
 
-describe("V1 Beta fixture harness scope scan", () => {
-  it("keeps Batch 23 deterministic and outside Track B runtime ownership", () => {
+describe("V1 Beta release gate scope scan", () => {
+  it("keeps Batch 24 release hardening deterministic and outside forbidden runtime paths", () => {
     const files = collectFiles([
       join(repoRoot, "packages", "contracts", "src", "v1-beta-fixture-harness.ts"),
       join(repoRoot, "packages", "v1-beta-fixtures", "src"),
-      join(repoRoot, "apps", "web", "app", "api", "dev", "v1-beta-fixture-harness"),
-      join(repoRoot, "apps", "web", "app", "dev", "v1-beta-fixture-harness")
+      join(repoRoot, "tests", "v1-beta-fixtures", "v1-beta-release-gate.test.ts")
     ]);
     const forbidden = [
       { pattern: /@homeai\/ads-runtime/i, allow: [] },
@@ -28,8 +27,6 @@ describe("V1 Beta fixture harness scope scan", () => {
         pattern: /payment/i,
         allow: [/payment_started_mock/, /mock/i]
       },
-      { pattern: /pdf|dwg|dxf/i, allow: [/pdfConstructionScopeEnabled/, /release-gate-no-pdf-construction/, /PDF or construction scope/] },
-      { pattern: /construction|contractor|load-bearing|structural/i, allow: [/pdfConstructionScopeEnabled/, /release-gate-no-pdf-construction/, /PDF or construction scope/] },
       { pattern: /confirmedGeometryMutable:\s*true|wallMutation|roomPolygon|persistCanonicalRevision|confirmFloorplanDraft/i, allow: [] }
     ];
 

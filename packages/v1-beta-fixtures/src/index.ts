@@ -1,7 +1,10 @@
 import {
   V1BetaFixtureHarnessPayloadSchema,
+  V1BetaReleaseGateReportSchema,
   V1BetaFlowViewModelSchema,
   type V1BetaFixtureHarnessPayload,
+  type V1BetaReleaseGateCheck,
+  type V1BetaReleaseGateReport,
   type V1BetaFlowStage
 } from "@homeai/contracts";
 import {
@@ -22,6 +25,13 @@ import {
 } from "@homeai/soft-decor-gps";
 
 export const v1BetaFixtureHarnessTimestamp = v1BetaEventFixtureTimestamp;
+const INVALID_RELEASE_GATE_TRACE = {
+  homeId: "invalid-v1-beta-harness",
+  schemeId: "invalid-v1-beta-harness",
+  floorplanRevisionId: "invalid-v1-beta-harness",
+  sceneContractId: "invalid-v1-beta-harness",
+  geometryHash: `sha256:${"f".repeat(64)}`
+};
 
 export function buildV1BetaFixtureHarness(): V1BetaFixtureHarnessPayload {
   const renderDebug = buildSchemeRenderGalleryDebugFixture("all_pass");
@@ -154,6 +164,106 @@ export function buildV1BetaFixtureHarness(): V1BetaFixtureHarnessPayload {
   }));
 }
 
+export function evaluateV1BetaReleaseGate(
+  rawHarness: unknown = buildV1BetaFixtureHarness()
+): V1BetaReleaseGateReport {
+  const parsed = V1BetaFixtureHarnessPayloadSchema.safeParse(clone(rawHarness));
+  if (!parsed.success) {
+    const checks = [
+      fail("release-gate-schema-valid", `Fixture harness schema validation failed with ${parsed.error.issues.length} issue(s).`)
+    ];
+    return releaseGateReport({
+      trace: INVALID_RELEASE_GATE_TRACE,
+      checks
+    });
+  }
+
+  const harness = parsed.data;
+  const checks = [
+    check(
+      "release-gate-deterministic-fixtures",
+      harness.guardrails.deterministicFixturesOnly,
+      "Harness uses deterministic fixtures only."
+    ),
+    check(
+      "release-gate-no-ads-runtime",
+      !harness.guardrails.adsRuntimeConsumed && !harness.guardrails.adsSnapshotRuntimeConsumed,
+      "Harness does not consume Track B ADS runtime or snapshot routes."
+    ),
+    check(
+      "release-gate-no-human-review-runtime",
+      !harness.guardrails.humanReviewRuntimeConsumed,
+      "Harness does not consume human review runtime routes."
+    ),
+    check(
+      "release-gate-no-provider",
+      !harness.guardrails.providerRegistryUsed && !harness.guardrails.realProviderEnabled,
+      "Harness does not use provider registry or real providers."
+    ),
+    check(
+      "release-gate-no-network",
+      !harness.guardrails.networkCallsEnabled,
+      "Harness does not use network calls."
+    ),
+    check(
+      "release-gate-readonly-geometry",
+      !harness.guardrails.confirmedGeometryMutable,
+      "Harness keeps confirmed geometry read-only."
+    ),
+    check(
+      "release-gate-no-live-commerce",
+      !harness.guardrails.liveCommerceEnabled,
+      "Harness keeps commerce actions mock-only."
+    ),
+    check(
+      "release-gate-no-pdf-construction",
+      !harness.guardrails.pdfConstructionScopeEnabled,
+      "Harness does not include PDF or construction scope."
+    ),
+    check(
+      "release-gate-zero-hard-stops",
+      harness.summary.hardStopCount === 0,
+      "Harness has zero hard stops."
+    ),
+    check(
+      "release-gate-full-room-render-status",
+      harness.summary.renderStatusRoomCount === harness.summary.schemeRoomCount,
+      "Render status shell covers every Scheme Page room."
+    ),
+    check(
+      "release-gate-creative-spec-coverage",
+      harness.summary.creativeRenderSpecCount >= harness.summary.schemeRoomCount,
+      "CreativeRenderSpec fixtures cover every Scheme Page room."
+    ),
+    check(
+      "release-gate-no-failed-gallery-state",
+      harness.renderGalleryViewModel.summary.roomsFailed === 0 && harness.renderGalleryViewModel.summary.roomsMissingCoverage === 0,
+      "Render gallery fixture has no failed or missing room coverage."
+    ),
+    check(
+      "release-gate-verified-skus",
+      harness.summary.verifiedSkuCount > 0,
+      "VerifiedSku admission produced local fixture SKUs."
+    ),
+    check(
+      "release-gate-soft-decor-full-space",
+      harness.summary.softDecorRoomCount === harness.summary.schemeRoomCount,
+      "Soft Decor GPS Lite covers every Scheme Page room."
+    ),
+    check(
+      "release-gate-payment-mock-event",
+      harness.events.some((event) => event.eventType === "payment_started_mock") &&
+        harness.conversionActionSet.actions.some((action) => action.type === "payment_started_mock"),
+      "Conversion intent includes payment_started_mock action and event only."
+    )
+  ];
+
+  return releaseGateReport({
+    trace: harness.trace,
+    checks
+  });
+}
+
 function buildHarnessFlow(input: {
   trace: {
     homeId: string;
@@ -260,6 +370,39 @@ function buildFlowSummary(stages: readonly V1BetaFlowStage[]) {
     currentStageId: currentStage.stageId,
     status: needsReviewStages > 0 ? "needs_review" : "ready_for_next_batch"
   };
+}
+
+function releaseGateReport(input: {
+  trace: V1BetaFixtureHarnessPayload["trace"];
+  checks: V1BetaReleaseGateCheck[];
+}): V1BetaReleaseGateReport {
+  const failedCheckCount = input.checks.filter((candidate) => candidate.status === "fail").length;
+  return deepFreeze(V1BetaReleaseGateReportSchema.parse({
+    version: "0.1",
+    source: "deterministic_beta_release_gate",
+    scenario: "beta_ready_all_pass",
+    status: failedCheckCount === 0 ? "pass" : "fail",
+    trace: input.trace,
+    checks: input.checks,
+    failedCheckCount,
+    generatedAt: v1BetaFixtureHarnessTimestamp
+  }));
+}
+
+function check(checkId: string, passes: boolean, message: string): V1BetaReleaseGateCheck {
+  return {
+    checkId,
+    status: passes ? "pass" : "fail",
+    message
+  };
+}
+
+function fail(checkId: string, message: string): V1BetaReleaseGateCheck {
+  return check(checkId, false, message);
+}
+
+function clone<T>(value: T): T {
+  return structuredClone(value);
 }
 
 function deepFreeze<T>(value: T): T {
