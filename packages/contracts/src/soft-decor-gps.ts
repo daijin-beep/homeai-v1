@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ConfidenceSchema, IdSchema, PriceSchema, SizeMmSchema, TimestampSchema } from "./common.js";
 import { BudgetBandSchema } from "./design-brief.js";
 import { RoomTypeSchema } from "./floorplan.js";
+import { GeometryHashSchema } from "./p1-floorplan-adjustment.js";
 
 export const ProductCategorySchema = z.enum([
   "sofa",
@@ -41,6 +42,14 @@ export const ProductCandidateSchema = z
         warnings: z.array(z.string())
       })
       .strict()
+  })
+  .strict();
+
+export const PlacementAnchorSchema = z
+  .object({
+    type: z.enum(["wall", "window", "room_center", "corner", "opening_adjacent"]),
+    targetId: IdSchema.optional(),
+    description: z.string().min(1)
   })
   .strict();
 
@@ -176,13 +185,68 @@ export const VerifiedSkuCatalogSchema = z
     }
   });
 
-export const PlacementAnchorSchema = z
+export const SoftDecorGpsLiteMatchSchema = z
   .object({
-    type: z.enum(["wall", "window", "room_center", "corner", "opening_adjacent"]),
-    targetId: IdSchema.optional(),
-    description: z.string().min(1)
+    matchId: IdSchema,
+    roomId: IdSchema,
+    roomType: z.string().min(1),
+    category: ProductCategorySchema,
+    skuId: IdSchema,
+    placementAnchor: PlacementAnchorSchema,
+    score: ConfidenceSchema,
+    styleScore: ConfidenceSchema,
+    sizeScore: ConfidenceSchema,
+    budgetScore: ConfidenceSchema,
+    reasons: z.array(z.string().min(1)),
+    warnings: z.array(z.string().min(1))
   })
   .strict();
+
+export const SoftDecorGpsLiteRoomSchema = z
+  .object({
+    roomId: IdSchema,
+    roomType: z.string().min(1),
+    matches: z.array(SoftDecorGpsLiteMatchSchema),
+    warnings: z.array(z.string().min(1))
+  })
+  .strict();
+
+export const SoftDecorGpsLitePlanSchema = z
+  .object({
+    version: z.literal("0.1"),
+    source: z.literal("verified_sku_catalog"),
+    homeId: IdSchema,
+    schemeId: IdSchema,
+    floorplanRevisionId: IdSchema,
+    sceneContractId: IdSchema,
+    geometryHash: GeometryHashSchema,
+    totalVerifiedSkuCount: z.number().int().nonnegative(),
+    matchedSkuCount: z.number().int().nonnegative(),
+    rooms: z.array(SoftDecorGpsLiteRoomSchema),
+    createdAt: TimestampSchema
+  })
+  .strict()
+  .superRefine((plan, ctx) => {
+    const matchedSkuIds = new Set(plan.rooms.flatMap((room) => room.matches.map((match) => match.skuId)));
+    if (plan.matchedSkuCount !== matchedSkuIds.size) {
+      ctx.addIssue({
+        code: "custom",
+        message: "matchedSkuCount must match unique matched SKU ids",
+        path: ["matchedSkuCount"]
+      });
+    }
+    for (const room of plan.rooms) {
+      for (const match of room.matches) {
+        if (match.roomId !== room.roomId || match.roomType !== room.roomType) {
+          ctx.addIssue({
+            code: "custom",
+            message: "match room trace must match room",
+            path: ["rooms"]
+          });
+        }
+      }
+    }
+  });
 
 export const SoftDecorRecommendationSchema = z
   .object({
@@ -231,6 +295,9 @@ export type VerifiedSku = z.infer<typeof VerifiedSkuSchema>;
 export type SkuAdmissionIssue = z.infer<typeof SkuAdmissionIssueSchema>;
 export type VerifiedSkuAdmissionResult = z.infer<typeof VerifiedSkuAdmissionResultSchema>;
 export type VerifiedSkuCatalog = z.infer<typeof VerifiedSkuCatalogSchema>;
+export type SoftDecorGpsLiteMatch = z.infer<typeof SoftDecorGpsLiteMatchSchema>;
+export type SoftDecorGpsLiteRoom = z.infer<typeof SoftDecorGpsLiteRoomSchema>;
+export type SoftDecorGpsLitePlan = z.infer<typeof SoftDecorGpsLitePlanSchema>;
 export type SoftDecorRecommendation = z.infer<typeof SoftDecorRecommendationSchema>;
 export type RoomSoftDecorGuide = z.infer<typeof RoomSoftDecorGuideSchema>;
 export type SoftDecorGPSPlan = z.infer<typeof SoftDecorGPSPlanSchema>;

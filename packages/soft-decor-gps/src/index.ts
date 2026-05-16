@@ -1,8 +1,15 @@
 import {
   RawSkuFixtureSchema,
+  SchemeLiteContractSchema,
+  SoftDecorGpsLitePlanSchema,
   VerifiedSkuAdmissionResultSchema,
   VerifiedSkuCatalogSchema,
   type RawSkuFixture,
+  type RoomSchemeLite,
+  type SchemeLiteContract,
+  type SoftDecorGpsLiteMatch,
+  type SoftDecorGpsLitePlan,
+  type SoftDecorGpsLiteRoom,
   type SkuAdmissionIssue,
   type VerifiedSku,
   type VerifiedSkuAdmissionResult,
@@ -190,6 +197,48 @@ export function buildVerifiedSkuDebugFixture(): VerifiedSkuCatalog {
   return importVerifiedSkuCatalog(localRawSkuFixtures);
 }
 
+export function buildSoftDecorGpsLitePlan(input: {
+  scheme: SchemeLiteContract;
+  catalog?: VerifiedSkuCatalog;
+  createdAt?: string;
+}): SoftDecorGpsLitePlan {
+  const scheme = SchemeLiteContractSchema.parse(clone(input.scheme));
+  const catalog = VerifiedSkuCatalogSchema.parse(clone(input.catalog ?? buildVerifiedSkuDebugFixture()));
+  const verifiedSkus = catalog.verifiedSkus;
+  const rooms = scheme.rooms.map((room): SoftDecorGpsLiteRoom => {
+    const matches = matchesForRoom({
+      room,
+      schemeStyleTags: [...scheme.style.tags, ...scheme.style.materialTags],
+      verifiedSkus
+    });
+
+    return {
+      roomId: room.roomId,
+      roomType: room.roomType,
+      matches,
+      warnings: matches.length === 0
+        ? [`No admitted local fixture SKU matched ${room.roomType}.`]
+        : ["Lite matching uses complete SKU metadata but does not guarantee physical fit."]
+    };
+  });
+
+  const matchedSkuCount = new Set(rooms.flatMap((room) => room.matches.map((match) => match.skuId))).size;
+
+  return deepFreeze(SoftDecorGpsLitePlanSchema.parse({
+    version: "0.1",
+    source: "verified_sku_catalog",
+    homeId: scheme.homeId,
+    schemeId: scheme.schemeId,
+    floorplanRevisionId: scheme.floorplanRevisionId,
+    sceneContractId: scheme.sceneContractId,
+    geometryHash: scheme.geometryHash,
+    totalVerifiedSkuCount: verifiedSkus.length,
+    matchedSkuCount,
+    rooms,
+    createdAt: input.createdAt ?? verifiedSkuFixtureTimestamp
+  }));
+}
+
 function admissionIssues(raw: RawSkuFixture): SkuAdmissionIssue[] {
   const issues = [
     ...(raw.price === undefined || raw.price.amount <= 0
@@ -210,6 +259,86 @@ function admissionIssues(raw: RawSkuFixture): SkuAdmissionIssue[] {
   ];
 
   return issues;
+}
+
+function matchesForRoom(input: {
+  room: RoomSchemeLite;
+  schemeStyleTags: readonly string[];
+  verifiedSkus: readonly VerifiedSku[];
+}): SoftDecorGpsLiteMatch[] {
+  const categories = categoriesForRoom(input.room.roomType);
+  return input.verifiedSkus
+    .filter((sku) => categories.includes(sku.category))
+    .map((sku): SoftDecorGpsLiteMatch => {
+      const styleScore = scoreStyleTags(input.schemeStyleTags, sku.styleTags);
+      const sizeScore = 0.72;
+      const budgetScore = budgetScoreForSku(sku);
+      const score = roundScore((styleScore * 0.4) + (sizeScore * 0.35) + (budgetScore * 0.25));
+      const anchor = input.room.anchorRefs[0];
+
+      return {
+        matchId: `match-${input.room.roomId}-${sku.skuId}`,
+        roomId: input.room.roomId,
+        roomType: input.room.roomType,
+        category: sku.category,
+        skuId: sku.skuId,
+        placementAnchor: {
+          type: anchor?.type ?? "room_center",
+          ...(anchor === undefined ? {} : { targetId: anchor.anchorId }),
+          description: `Place ${sku.category.replaceAll("_", " ")} using ${input.room.roomType} planning anchors.`
+        },
+        score,
+        styleScore,
+        sizeScore,
+        budgetScore,
+        reasons: [
+          "SKU was admitted by the local fixture gate.",
+          "SKU has price, width, depth, height, image, and lead fixture URI.",
+          `Matched category ${sku.category} to ${input.room.roomType}.`
+        ],
+        warnings: ["Lite matching does not mutate or validate confirmed geometry."]
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.skuId.localeCompare(right.skuId));
+}
+
+function categoriesForRoom(roomType: string): VerifiedSku["category"][] {
+  switch (roomType) {
+    case "living_room":
+    case "living_dining":
+      return ["sofa", "rug", "coffee_table", "lamp", "storage_cabinet", "decor"];
+    case "primary_bedroom":
+    case "bedroom":
+    case "secondary_bedroom":
+    case "kids_room":
+      return ["bed", "wardrobe", "rug", "lamp", "decor"];
+    case "study":
+      return ["desk", "chair", "lamp", "storage_cabinet", "decor"];
+    case "balcony":
+      return ["chair", "rug", "lamp", "decor"];
+    case "dining_room":
+    case "kitchen":
+      return ["dining_table", "dining_chair", "lamp", "storage_cabinet"];
+    default:
+      return [];
+  }
+}
+
+function scoreStyleTags(schemeStyleTags: readonly string[], skuStyleTags: readonly string[]): number {
+  const normalizedScheme = new Set(schemeStyleTags.map((tag) => tag.toLowerCase()));
+  const overlap = skuStyleTags.filter((tag) => normalizedScheme.has(tag.toLowerCase())).length;
+  return roundScore(0.55 + Math.min(overlap, 3) * 0.15);
+}
+
+function budgetScoreForSku(sku: VerifiedSku): number {
+  if (sku.price.budgetBand === "low" || sku.price.budgetBand === "mid") {
+    return 0.86;
+  }
+  return 0.7;
+}
+
+function roundScore(value: number): number {
+  return Math.max(0, Math.min(1, Math.round(value * 100) / 100));
 }
 
 function rejectSku(
