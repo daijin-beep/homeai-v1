@@ -37,3 +37,4 @@ export * from "./design-kernel.js";
 export * from "./scheme-page.js";
 export * from "./creative-render-spec.js";
 export * from "./scheme-render-gallery.js";
+export * from "./v1-beta-flow.js";
