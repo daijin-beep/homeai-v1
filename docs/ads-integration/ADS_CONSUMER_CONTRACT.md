@@ -8,6 +8,14 @@ ADS owns runtime validation, provider gating, render verification, bakeoff, and 
 
 Batch 12 defines the handoff boundary only. Codex does not import ADS runtime packages and ADS must not write Space Truth.
 
+## Freeze Status
+
+`CreativeRenderSpec` freeze is active, not deferred.
+
+ADS should cite `docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md` and this
+consumer contract as the current freeze reference. Older ADS branch notes that
+describe the freeze as deferred are stale.
+
 ## ADS Input
 
 ADS receives `CreativeRenderSpec` as a readonly object.
@@ -46,6 +54,16 @@ geometryHash
 If those values do not match, ADS must reject the spec.
 
 ADS must not add fallback ids or infer missing geometry context from provider output.
+
+## Render Trace Source
+
+L1 verifier output should use the canonical trace source:
+
+```text
+RenderTrace.sourceModule = render_verifier_l1
+```
+
+Do not introduce ADS-local source module strings for verifier reports.
 
 ## Readonly Rules
 

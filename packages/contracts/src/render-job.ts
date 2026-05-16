@@ -4,15 +4,18 @@ import { GeometryHashSchema, P1RoomTypeSchema } from "./p1-floorplan-adjustment.
 
 export const RenderLifecycleStatusSchema = z.enum(["pass", "warning", "fail"]);
 
+export const RenderTraceSourceModuleSchema = z.enum([
+  "render_job_builder",
+  "render_candidate_builder",
+  "render_verifier_mock",
+  "render_verifier_l1",
+  "gallery_eligibility_evaluator"
+]);
+
 export const RenderTraceSchema = z
   .object({
     traceId: IdSchema,
-    sourceModule: z.enum([
-      "render_job_builder",
-      "render_candidate_builder",
-      "render_verifier_mock",
-      "gallery_eligibility_evaluator"
-    ]),
+    sourceModule: RenderTraceSourceModuleSchema,
     networkCalls: z.literal(false),
     providerCalls: z.array(
       z
@@ -161,6 +164,7 @@ export const RenderJobSchema = z
   });
 
 export type RenderLifecycleStatus = z.infer<typeof RenderLifecycleStatusSchema>;
+export type RenderTraceSourceModule = z.infer<typeof RenderTraceSourceModuleSchema>;
 export type RenderTrace = z.infer<typeof RenderTraceSchema>;
 export type RenderJobStatus = z.infer<typeof RenderJobStatusSchema>;
 export type RenderRoomJobStatus = z.infer<typeof RenderRoomJobStatusSchema>;

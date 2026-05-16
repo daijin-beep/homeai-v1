@@ -23,9 +23,13 @@ describe("CreativeRenderSpec freeze documentation", () => {
     const gate = read("docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md");
 
     expect(consumer).toContain("Codex does not import ADS runtime packages");
+    expect(consumer).toContain("CreativeRenderSpec` freeze is active, not deferred");
+    expect(consumer).toContain("RenderTrace.sourceModule = render_verifier_l1");
     expect(consumer).toContain("validateCreativeRenderSpecForADS()");
-    expect(gate).toContain("Old ADS PR #2 must be closed as superseded and must not be merged");
+    expect(gate).toContain("Old ADS PR #2 has been closed as superseded and must not be merged");
+    expect(gate).toContain("https://github.com/daijin-beep/homeai-v1/pull/10");
     expect(gate).toContain("ads/rebased-batch03-06-verifier-debug-bakeoff-gated-provider");
+    expect(gate).toContain("render_verifier_l1");
   });
 });
 

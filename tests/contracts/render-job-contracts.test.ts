@@ -3,6 +3,8 @@ import {
   GalleryEligibilityDecisionSchema,
   RenderCandidateSchema,
   RenderJobSchema,
+  RenderTraceSchema,
+  RenderTraceSourceModuleSchema,
   RenderVerificationReportSchema
 } from "@homeai/contracts";
 import {
@@ -70,6 +72,35 @@ describe("Render lifecycle contracts", () => {
     expect(GalleryEligibilityDecisionSchema.safeParse({
       ...decision,
       status: "gallery"
+    }).success).toBe(false);
+  });
+
+  it("allows canonical render verifier L1 trace source module", () => {
+    const fixture = buildRenderLifecycleDebugFixture("all_pass");
+    const report = fixture.verificationReports[0];
+    if (report === undefined) {
+      throw new Error("Expected verification report.");
+    }
+
+    const parsed = RenderTraceSchema.parse({
+      ...report.trace,
+      sourceModule: "render_verifier_l1"
+    });
+
+    expect(parsed.sourceModule).toBe("render_verifier_l1");
+    expect(RenderTraceSourceModuleSchema.safeParse("render_verifier_l1").success).toBe(true);
+  });
+
+  it("rejects unknown render trace source modules", () => {
+    const fixture = buildRenderLifecycleDebugFixture("all_pass");
+    const report = fixture.verificationReports[0];
+    if (report === undefined) {
+      throw new Error("Expected verification report.");
+    }
+
+    expect(RenderTraceSchema.safeParse({
+      ...report.trace,
+      sourceModule: "render_verifier_runtime"
     }).success).toBe(false);
   });
 
