@@ -2,20 +2,27 @@ import {
   SchemeLiteContractSchema,
   SchemePageDebugPayloadSchema,
   SchemePagePreviewRequestSchema,
+  SchemePageRenderStatusShellSchema,
   SchemePageVerificationSchema,
   SchemePageViewModelSchema,
+  SchemeRenderGalleryViewModelSchema,
   type RoomSchemeLite,
   type SchemeLiteContract,
   type SchemePageCoverageSummary,
   type SchemePageDebugPayload,
   type SchemePagePresentationDepth,
   type SchemePagePreviewRequest,
+  type SchemePageRenderRoomStatus,
+  type SchemePageRenderStatusShell,
+  type SchemePageRenderStatusSource,
+  type SchemePageRenderStatusSummary,
   type SchemePageRoomActionHint,
   type SchemePageRoomCard,
   type SchemePageVerification,
   type SchemePageVerificationCheck,
   type SchemePageViewModel,
-  type SchemePageWarning
+  type SchemePageWarning,
+  type SchemeRenderGalleryViewModel
 } from "@homeai/contracts";
 
 export {
@@ -28,6 +35,13 @@ export {
 export type SchemePageBuildOptions = {
   generatedAt?: string;
   title?: string;
+};
+
+export type SchemePageRenderStatusShellInput = {
+  viewModel: SchemePageViewModel;
+  renderGalleryViewModel?: SchemeRenderGalleryViewModel;
+  generatedAt?: string;
+  source?: SchemePageRenderStatusSource;
 };
 
 const DEFAULT_GENERATED_AT = "2026-05-14T00:00:00.000Z";
@@ -134,6 +148,7 @@ export function buildSchemePageDebugPayload(
 ): SchemePageDebugPayload {
   const input = SchemePagePreviewRequestSchema.parse(clone(rawInput));
   const viewModel = buildSchemePageViewModelFromSchemeLite(input.scheme);
+  const renderStatusShell = buildSchemePageRenderStatusShell({ viewModel });
   const pageVerification = verifySchemePageViewModel(viewModel, input.scheme);
 
   if (pageVerification.status === "fail") {
@@ -150,7 +165,50 @@ export function buildSchemePageDebugPayload(
     pageVerification,
     trace: viewModel.trace,
     coverage: viewModel.coverage,
+    renderStatusShell,
     warnings: viewModel.warnings
+  }));
+}
+
+export function buildSchemePageRenderStatusShell(
+  rawInput: SchemePageRenderStatusShellInput
+): SchemePageRenderStatusShell {
+  const viewModel = SchemePageViewModelSchema.parse(clone(rawInput.viewModel));
+  const gallery = rawInput.renderGalleryViewModel === undefined
+    ? undefined
+    : SchemeRenderGalleryViewModelSchema.parse(clone(rawInput.renderGalleryViewModel));
+
+  if (gallery !== undefined) {
+    assertRenderGalleryTraceAlignment(viewModel, gallery);
+  }
+
+  const galleryRoomsById = new Map((gallery?.rooms ?? []).map((room) => [room.roomId, room]));
+  const rooms = viewModel.rooms.map((room): SchemePageRenderRoomStatus => {
+    const galleryRoom = galleryRoomsById.get(room.roomId);
+    const issues = uniqueSorted(galleryRoom?.issues ?? []);
+
+    return {
+      roomId: room.roomId,
+      roomLabel: room.roomLabel,
+      roomType: room.roomType,
+      presentationDepth: room.presentationDepth,
+      renderStatus: galleryRoom?.renderStatus ?? "not_started",
+      eligibleCandidateCount: galleryRoom?.eligibleCandidateCount ?? 0,
+      blockedCandidateCount: galleryRoom?.blockedCandidateCount ?? 0,
+      warningCandidateCount: galleryRoom?.warningCandidateCount ?? 0,
+      issueCount: issues.length,
+      issues
+    };
+  });
+  const summary = buildRenderStatusSummary(rooms);
+
+  return deepFreeze(SchemePageRenderStatusShellSchema.parse({
+    version: "0.1",
+    source: rawInput.source ?? (gallery === undefined ? "view_model" : "deterministic_fixture"),
+    trace: viewModel.trace,
+    summary,
+    rooms,
+    generatedAt: rawInput.generatedAt ?? viewModel.generatedAt
   }));
 }
 
@@ -251,6 +309,81 @@ function buildActions(
           label: "Layout intent references included"
         }])
   ];
+}
+
+function assertRenderGalleryTraceAlignment(
+  viewModel: SchemePageViewModel,
+  gallery: SchemeRenderGalleryViewModel
+): void {
+  if (
+    gallery.schemeId !== viewModel.trace.schemeId ||
+    gallery.homeId !== viewModel.trace.homeId ||
+    gallery.floorplanRevisionId !== viewModel.trace.floorplanRevisionId ||
+    gallery.sceneContractId !== viewModel.trace.sceneContractId ||
+    gallery.geometryHash !== viewModel.trace.geometryHash
+  ) {
+    throw new Error("Render gallery view model trace does not match Scheme Page view model.");
+  }
+}
+
+function buildRenderStatusSummary(
+  rooms: readonly SchemePageRenderRoomStatus[]
+): SchemePageRenderStatusSummary {
+  const notStartedRooms = rooms.filter((room) => room.renderStatus === "not_started").length;
+  const pendingRooms = rooms.filter((room) => room.renderStatus === "pending").length;
+  const roomsWithEligibleRender = rooms.filter((room) => room.renderStatus === "has_eligible_render").length;
+  const roomsNeedingHumanReview = rooms.filter((room) => room.renderStatus === "human_review_required").length;
+  const roomsFailed = rooms.filter((room) => room.renderStatus === "failed").length;
+  const roomsMissingCoverage = rooms.filter((room) => room.renderStatus === "missing_coverage").length;
+  const eligibleCandidateCount = rooms.reduce((sum, room) => sum + room.eligibleCandidateCount, 0);
+  const blockedCandidateCount = rooms.reduce((sum, room) => sum + room.blockedCandidateCount, 0);
+  const warningCandidateCount = rooms.reduce((sum, room) => sum + room.warningCandidateCount, 0);
+
+  return {
+    totalRooms: rooms.length,
+    notStartedRooms,
+    pendingRooms,
+    roomsWithEligibleRender,
+    roomsNeedingHumanReview,
+    roomsFailed,
+    roomsMissingCoverage,
+    eligibleCandidateCount,
+    blockedCandidateCount,
+    warningCandidateCount,
+    status: renderStatusSummaryStatus({
+      totalRooms: rooms.length,
+      notStartedRooms,
+      pendingRooms,
+      roomsWithEligibleRender,
+      roomsNeedingHumanReview,
+      roomsFailed,
+      roomsMissingCoverage
+    })
+  };
+}
+
+function renderStatusSummaryStatus(input: {
+  totalRooms: number;
+  notStartedRooms: number;
+  pendingRooms: number;
+  roomsWithEligibleRender: number;
+  roomsNeedingHumanReview: number;
+  roomsFailed: number;
+  roomsMissingCoverage: number;
+}): SchemePageRenderStatusSummary["status"] {
+  if (input.roomsFailed > 0 || input.roomsMissingCoverage > 0) {
+    return "blocked";
+  }
+  if (input.roomsNeedingHumanReview > 0) {
+    return "needs_review";
+  }
+  if (input.roomsWithEligibleRender === input.totalRooms && input.totalRooms > 0) {
+    return "ready";
+  }
+  if (input.pendingRooms > 0 || input.roomsWithEligibleRender > 0) {
+    return "in_progress";
+  }
+  return "not_started";
 }
 
 function compareRoomSchemes(a: RoomSchemeLite, b: RoomSchemeLite): number {
@@ -434,6 +567,10 @@ function aggregateStatus(checks: readonly SchemePageVerificationCheck[]): Scheme
 
 function clone<T>(value: T): T {
   return structuredClone(value);
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort();
 }
 
 function deepFreeze<T>(value: T): T {
