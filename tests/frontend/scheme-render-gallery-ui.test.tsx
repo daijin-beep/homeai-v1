@@ -54,6 +54,8 @@ describe("Scheme render gallery UI", () => {
     render(<SchemePagePreview viewModel={schemePage} renderGalleryViewModel={debug.galleryViewModel} />);
 
     expect(screen.getByTestId("scheme-page-preview")).toBeInTheDocument();
+    expect(screen.getByTestId("scheme-page-render-status-shell")).toHaveAttribute("data-source", "deterministic_fixture");
+    expect(screen.getByTestId("scheme-page-render-status-summary")).toHaveTextContent("ready");
     expect(screen.getByTestId("scheme-render-gallery-section")).toBeInTheDocument();
   });
 

@@ -1,25 +1,36 @@
 import type {
   SchemePageCoverageSummary,
+  SchemePageRenderRoomStatus,
+  SchemePageRenderStatusShell,
   SchemePageRoomCard,
   SchemePageViewModel,
   SchemePageWarning,
   SchemeRenderGalleryViewModel
 } from "@homeai/contracts";
+import { buildSchemePageRenderStatusShell } from "@homeai/scheme-page";
 import { RoomRenderGallerySection } from "../scheme-render-gallery/RoomRenderGallerySection.js";
 
 export function SchemePagePreview({
   viewModel,
+  renderStatusShell,
   renderGalleryViewModel,
   showDebug = false
 }: {
   viewModel: SchemePageViewModel;
+  renderStatusShell?: SchemePageRenderStatusShell;
   renderGalleryViewModel?: SchemeRenderGalleryViewModel;
   showDebug?: boolean;
 }) {
+  const statusShell = renderStatusShell ?? buildSchemePageRenderStatusShell({
+    viewModel,
+    ...(renderGalleryViewModel === undefined ? {} : { renderGalleryViewModel })
+  });
+
   return (
     <main data-testid="scheme-page-preview" style={shellStyle}>
       <SchemePageHeader viewModel={viewModel} />
       <SchemeCoverageBanner coverage={viewModel.coverage} />
+      <SchemeRenderStatusShell shell={statusShell} />
       <SchemeBudgetStyleSummary viewModel={viewModel} />
       <SchemeWarningsPanel warnings={viewModel.warnings} />
       <section aria-label="Room schemes" style={roomGridStyle}>
@@ -35,6 +46,55 @@ export function SchemePagePreview({
         </>
       ) : null}
     </main>
+  );
+}
+
+export function SchemeRenderStatusShell({ shell }: { shell: SchemePageRenderStatusShell }) {
+  return (
+    <section
+      data-testid="scheme-page-render-status-shell"
+      data-source={shell.source}
+      style={bandStyle}
+    >
+      <div style={sectionHeaderStyle}>
+        <div>
+          <p style={eyebrowStyle}>Render status</p>
+          <h2 style={sectionTitleStyle}>Room visual readiness</h2>
+        </div>
+        <span data-testid="scheme-page-render-status-summary" style={statusStyle}>
+          {shell.summary.status}
+        </span>
+      </div>
+      <div data-testid="scheme-page-render-status-metrics" style={metricBandStyle}>
+        <Metric label="Ready" value={shell.summary.roomsWithEligibleRender} />
+        <Metric label="Pending" value={shell.summary.pendingRooms} />
+        <Metric label="Review" value={shell.summary.roomsNeedingHumanReview} />
+        <Metric label="Blocked" value={shell.summary.roomsFailed + shell.summary.roomsMissingCoverage} />
+      </div>
+      <div style={statusGridStyle}>
+        {shell.rooms.map((room) => (
+          <RenderRoomStatusItem key={room.roomId} room={room} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RenderRoomStatusItem({ room }: { room: SchemePageRenderRoomStatus }) {
+  return (
+    <div data-testid={`scheme-page-render-status-room-${room.roomId}`} style={renderRoomStatusStyle}>
+      <div>
+        <p style={eyebrowStyle}>{room.presentationDepth}</p>
+        <strong>{room.roomLabel}</strong>
+      </div>
+      <span style={statusStyle}>{room.renderStatus}</span>
+      <p style={mutedStyle}>
+        {room.eligibleCandidateCount} ready / {room.warningCandidateCount} review / {room.blockedCandidateCount} blocked
+      </p>
+      {room.issues.length > 0 ? (
+        <p style={warningTextStyle}>{room.issues.join(", ")}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -256,7 +316,39 @@ const roomHeaderStyle = {
   gap: 12
 };
 
+const sectionHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16
+};
+
+const metricBandStyle = {
+  display: "flex",
+  flexWrap: "wrap" as const,
+  gap: 12,
+  marginBottom: 12
+};
+
+const statusGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 12
+};
+
+const renderRoomStatusStyle = {
+  display: "grid",
+  gap: 8,
+  border: "1px solid #eee",
+  borderRadius: 8,
+  padding: 12
+};
+
 const warningListStyle = {
+  color: "#9a3412"
+};
+
+const warningTextStyle = {
+  ...mutedStyle,
   color: "#9a3412"
 };
 

@@ -7,6 +7,7 @@ import {
 import { GeometryHashSchema } from "./p1-floorplan-adjustment.js";
 import { LayoutIntentHashSchema } from "./layout-intent.js";
 import { IdSchema, TimestampSchema } from "./common.js";
+import { RoomRenderStatusSchema } from "./scheme-render-gallery.js";
 
 export const SchemePagePresentationDepthSchema = z.enum(["primary", "standard", "light"]);
 
@@ -135,6 +136,111 @@ export const SchemePageViewModelSchema = z
     }
   });
 
+export const SchemePageRenderStatusSourceSchema = z.enum(["view_model", "deterministic_fixture"]);
+
+export const SchemePageRenderRoomStatusSchema = z
+  .object({
+    roomId: IdSchema,
+    roomLabel: z.string().min(1),
+    roomType: z.string().min(1),
+    presentationDepth: SchemePagePresentationDepthSchema,
+    renderStatus: RoomRenderStatusSchema,
+    eligibleCandidateCount: z.number().int().nonnegative(),
+    blockedCandidateCount: z.number().int().nonnegative(),
+    warningCandidateCount: z.number().int().nonnegative(),
+    issueCount: z.number().int().nonnegative(),
+    issues: z.array(z.string().min(1))
+  })
+  .strict()
+  .superRefine((room, ctx) => {
+    if (room.issueCount !== room.issues.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "issueCount must match issues",
+        path: ["issueCount"]
+      });
+    }
+    if (room.renderStatus === "has_eligible_render" && room.eligibleCandidateCount === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "has_eligible_render requires eligible candidates",
+        path: ["eligibleCandidateCount"]
+      });
+    }
+    if (room.renderStatus === "human_review_required" && room.warningCandidateCount === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "human_review_required requires warning candidates",
+        path: ["warningCandidateCount"]
+      });
+    }
+    if (room.renderStatus === "failed" && room.blockedCandidateCount === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "failed render status requires blocked candidates",
+        path: ["blockedCandidateCount"]
+      });
+    }
+  });
+
+export const SchemePageRenderStatusSummarySchema = z
+  .object({
+    totalRooms: z.number().int().positive(),
+    notStartedRooms: z.number().int().nonnegative(),
+    pendingRooms: z.number().int().nonnegative(),
+    roomsWithEligibleRender: z.number().int().nonnegative(),
+    roomsNeedingHumanReview: z.number().int().nonnegative(),
+    roomsFailed: z.number().int().nonnegative(),
+    roomsMissingCoverage: z.number().int().nonnegative(),
+    eligibleCandidateCount: z.number().int().nonnegative(),
+    blockedCandidateCount: z.number().int().nonnegative(),
+    warningCandidateCount: z.number().int().nonnegative(),
+    status: z.enum(["not_started", "in_progress", "ready", "needs_review", "blocked"])
+  })
+  .strict();
+
+export const SchemePageRenderStatusShellSchema = z
+  .object({
+    version: z.literal("0.1"),
+    source: SchemePageRenderStatusSourceSchema,
+    trace: SchemePageTraceSummarySchema,
+    summary: SchemePageRenderStatusSummarySchema,
+    rooms: z.array(SchemePageRenderRoomStatusSchema).min(1),
+    generatedAt: TimestampSchema
+  })
+  .strict()
+  .superRefine((shell, ctx) => {
+    if (shell.summary.totalRooms !== shell.rooms.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "summary totalRooms must match render status rooms",
+        path: ["summary", "totalRooms"]
+      });
+    }
+
+    const statusCounts = {
+      notStartedRooms: shell.rooms.filter((room) => room.renderStatus === "not_started").length,
+      pendingRooms: shell.rooms.filter((room) => room.renderStatus === "pending").length,
+      roomsWithEligibleRender: shell.rooms.filter((room) => room.renderStatus === "has_eligible_render").length,
+      roomsNeedingHumanReview: shell.rooms.filter((room) => room.renderStatus === "human_review_required").length,
+      roomsFailed: shell.rooms.filter((room) => room.renderStatus === "failed").length,
+      roomsMissingCoverage: shell.rooms.filter((room) => room.renderStatus === "missing_coverage").length,
+      eligibleCandidateCount: shell.rooms.reduce((sum, room) => sum + room.eligibleCandidateCount, 0),
+      blockedCandidateCount: shell.rooms.reduce((sum, room) => sum + room.blockedCandidateCount, 0),
+      warningCandidateCount: shell.rooms.reduce((sum, room) => sum + room.warningCandidateCount, 0)
+    };
+
+    for (const [key, value] of Object.entries(statusCounts)) {
+      if (shell.summary[key as keyof typeof statusCounts] !== value) {
+        ctx.addIssue({
+          code: "custom",
+          message: "render status summary counts must match rooms",
+          path: ["summary", key]
+        });
+      }
+    }
+  });
+
 export const SchemePageVerificationCheckSchema = z
   .object({
     checkId: IdSchema,
@@ -164,6 +270,7 @@ export const SchemePageDebugPayloadSchema = z
     pageVerification: SchemePageVerificationSchema,
     trace: SchemePageTraceSummarySchema,
     coverage: SchemePageCoverageSummarySchema,
+    renderStatusShell: SchemePageRenderStatusShellSchema,
     warnings: z.array(SchemePageWarningSchema)
   })
   .strict();
@@ -191,6 +298,10 @@ export type SchemePageRoomActionHint = z.infer<typeof SchemePageRoomActionHintSc
 export type SchemePageWarning = z.infer<typeof SchemePageWarningSchema>;
 export type SchemePageRoomCard = z.infer<typeof SchemePageRoomCardSchema>;
 export type SchemePageViewModel = z.infer<typeof SchemePageViewModelSchema>;
+export type SchemePageRenderStatusSource = z.infer<typeof SchemePageRenderStatusSourceSchema>;
+export type SchemePageRenderRoomStatus = z.infer<typeof SchemePageRenderRoomStatusSchema>;
+export type SchemePageRenderStatusSummary = z.infer<typeof SchemePageRenderStatusSummarySchema>;
+export type SchemePageRenderStatusShell = z.infer<typeof SchemePageRenderStatusShellSchema>;
 export type SchemePageVerificationCheck = z.infer<typeof SchemePageVerificationCheckSchema>;
 export type SchemePageVerification = z.infer<typeof SchemePageVerificationSchema>;
 export type SchemePageDebugPayload = z.infer<typeof SchemePageDebugPayloadSchema>;

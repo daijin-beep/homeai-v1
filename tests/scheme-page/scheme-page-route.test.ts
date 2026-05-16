@@ -31,6 +31,7 @@ describe("Scheme Page dev preview route", () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.debug.viewModel.rooms).toHaveLength(scheme.rooms.length);
+    expect(body.debug.renderStatusShell.summary.notStartedRooms).toBe(scheme.rooms.length);
   });
 
   it("allows preview outside production", async () => {

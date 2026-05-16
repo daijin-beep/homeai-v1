@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   assertSchemePageFullSpaceCoverage,
   buildSchemePageDebugPayload,
+  buildSchemePageRenderStatusShell,
   buildSchemePageViewModelFromSchemeLite,
   verifySchemePageViewModel
 } from "@homeai/scheme-page";
 import { createSchemePageFixtureContract } from "@homeai/scheme-page";
+import { buildSchemeRenderGalleryDebugFixture } from "@homeai/render-pipeline";
 
 describe("Scheme Page view model builder", () => {
   it("builds an immutable full-space view model from SchemeLiteContract", () => {
@@ -111,7 +113,48 @@ describe("Scheme Page view model builder", () => {
     expect(debug.request.schemeId).toBe(scheme.schemeId);
     expect(debug.trace.geometryHash).toBe(scheme.geometryHash);
     expect(debug.coverage.totalRooms).toBe(scheme.rooms.length);
+    expect(debug.renderStatusShell.summary.notStartedRooms).toBe(scheme.rooms.length);
     expect(debug.viewModel.rooms).toHaveLength(scheme.rooms.length);
     expect(debug.pageVerification.status).not.toBe("fail");
+  });
+
+  it("builds a render status shell without runtime ADS inputs", () => {
+    const scheme = createSchemePageFixtureContract({ withLayoutIntent: true });
+    const viewModel = buildSchemePageViewModelFromSchemeLite(scheme);
+    const shell = buildSchemePageRenderStatusShell({ viewModel });
+
+    expect(shell.source).toBe("view_model");
+    expect(shell.trace.geometryHash).toBe(viewModel.trace.geometryHash);
+    expect(shell.summary.status).toBe("not_started");
+    expect(shell.summary.notStartedRooms).toBe(viewModel.rooms.length);
+    expect(shell.rooms.every((room) => room.renderStatus === "not_started")).toBe(true);
+    expect(JSON.stringify(shell)).not.toMatch(/render-snapshot|render-human-review|ads-runtime|provider/i);
+  });
+
+  it("maps deterministic gallery fixture statuses into the Scheme Page shell", () => {
+    const debug = buildSchemeRenderGalleryDebugFixture("one_anchor_zone_warning");
+    const viewModel = buildSchemePageViewModelFromSchemeLite(debug.schemeLiteContract);
+    const shell = buildSchemePageRenderStatusShell({
+      viewModel,
+      renderGalleryViewModel: debug.galleryViewModel
+    });
+
+    expect(shell.source).toBe("deterministic_fixture");
+    expect(shell.summary.status).toBe("needs_review");
+    expect(shell.summary.roomsNeedingHumanReview).toBe(1);
+    expect(shell.rooms.some((room) => room.renderStatus === "human_review_required")).toBe(true);
+  });
+
+  it("fails closed when render gallery trace does not match Scheme Page trace", () => {
+    const debug = buildSchemeRenderGalleryDebugFixture("all_pass");
+    const viewModel = buildSchemePageViewModelFromSchemeLite(debug.schemeLiteContract);
+
+    expect(() => buildSchemePageRenderStatusShell({
+      viewModel,
+      renderGalleryViewModel: {
+        ...debug.galleryViewModel,
+        geometryHash: `sha256:${"f".repeat(64)}`
+      }
+    })).toThrow(/trace does not match/i);
   });
 });
