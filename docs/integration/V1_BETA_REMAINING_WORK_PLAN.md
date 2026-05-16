@@ -6,6 +6,10 @@ This document records the Batch 15 ownership reconciliation baseline for
 homeAI V1 Beta.
 
 - Base stack branch: `codex/batch14-render-trace-docs`
+- This branch is stacked on `codex/batch14-render-trace-docs`.
+- Do not open this branch against `main` until Batch 14C is merged.
+- If this branch is opened before Batch 14C is merged, its PR base must be
+  `codex/batch14-render-trace-docs`.
 - Batch 14C commit: `90b894484aa272f2a88198ad871179666fb7a256`
 - Batch 14C scope: canonical `RenderTrace.sourceModule` includes
   `render_verifier_l1`; ADS freeze docs mark `CreativeRenderSpec` as active,
