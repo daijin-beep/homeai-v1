@@ -11,13 +11,15 @@ export const V1BetaEventTypeSchema = z.enum([
   "render_status_viewed",
   "render_room_status_opened",
   "decor_matching_locked_viewed",
-  "conversion_intent_locked_viewed"
+  "conversion_intent_locked_viewed",
+  "payment_started_mock"
 ]);
 
 export const V1BetaEventSourceSchema = z.enum([
   "v1_beta_flow_shell",
   "scheme_page_shell",
   "render_status_shell",
+  "conversion_action_shell",
   "dev_intake",
   "fixture"
 ]);

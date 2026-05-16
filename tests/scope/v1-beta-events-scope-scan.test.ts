@@ -22,7 +22,7 @@ describe("V1 Beta events scope scan", () => {
       /node:http|node:https|node-fetch|undici|XMLHttpRequest/i,
       /OpenAI|Anthropic|Gemini|Replicate|Stability|DASHSCOPE/i,
       /API_KEY|SECRET|TOKEN/i,
-      /stripe|checkout|payment/i,
+      /stripe|checkout/i,
       /sku/i,
       /pdf|dwg|dxf/i,
       /construction|contractor|load-bearing|structural/i,

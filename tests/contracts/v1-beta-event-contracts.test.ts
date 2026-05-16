@@ -61,7 +61,8 @@ describe("V1 Beta event contracts", () => {
         render_status_viewed: 1,
         render_room_status_opened: 0,
         decor_matching_locked_viewed: 0,
-        conversion_intent_locked_viewed: 0
+        conversion_intent_locked_viewed: 0,
+        payment_started_mock: 0
       }
     };
 

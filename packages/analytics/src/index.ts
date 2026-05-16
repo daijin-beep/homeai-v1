@@ -5,7 +5,11 @@ import {
   V1BetaEventSchema,
   V1BetaEventSummarySchema,
   V1BetaEventTypeSchema,
+  V1BetaConversionDebugPayloadSchema,
+  V1BetaConversionActionSetSchema,
   type V1BetaEvent,
+  type V1BetaConversionActionSet,
+  type V1BetaConversionDebugPayload,
   type V1BetaEventDebugPayload,
   type V1BetaEventIntakeRequest,
   type V1BetaEventIntakeResponse,
@@ -135,6 +139,112 @@ export function buildV1BetaEventDebugFixture(): V1BetaEventDebugPayload {
     ok: true,
     events: repository.list(),
     summary: repository.summarize(),
+    generatedAt: v1BetaEventFixtureTimestamp
+  });
+}
+
+export function buildV1BetaConversionActionSet(input: {
+  homeId: string;
+  schemeId: string;
+  floorplanRevisionId: string;
+  sceneContractId: string;
+  geometryHash: string;
+  generatedAt?: string;
+}): V1BetaConversionActionSet {
+  return V1BetaConversionActionSetSchema.parse({
+    version: "0.1",
+    source: "mock_only",
+    homeId: input.homeId,
+    schemeId: input.schemeId,
+    floorplanRevisionId: input.floorplanRevisionId,
+    sceneContractId: input.sceneContractId,
+    geometryHash: input.geometryHash,
+    actions: [
+      {
+        actionId: "conversion-save-plan-mock",
+        type: "save_plan_mock",
+        label: "Save plan",
+        status: "enabled_mock",
+        requiresRealPaymentProvider: false,
+        summary: "Records local beta intent only."
+      },
+      {
+        actionId: "conversion-share-plan-mock",
+        type: "share_plan_mock",
+        label: "Share plan",
+        status: "enabled_mock",
+        requiresRealPaymentProvider: false,
+        summary: "Produces no external share request."
+      },
+      {
+        actionId: "conversion-contact-request-mock",
+        type: "contact_request_mock",
+        label: "Request contact",
+        status: "enabled_mock",
+        requiresRealPaymentProvider: false,
+        summary: "Captures no personal contact fields in Batch 22."
+      },
+      {
+        actionId: "conversion-payment-started-mock",
+        type: "payment_started_mock",
+        label: "Start payment mock",
+        status: "enabled_mock",
+        eventType: "payment_started_mock",
+        requiresRealPaymentProvider: false,
+        summary: "Creates a payment_started_mock event only."
+      }
+    ],
+    generatedAt: input.generatedAt ?? v1BetaEventFixtureTimestamp
+  });
+}
+
+export function createPaymentStartedMockEvent(input: {
+  eventId?: string;
+  anonymousSessionId: string;
+  homeId: string;
+  schemeId: string;
+  floorplanRevisionId: string;
+  sceneContractId: string;
+  geometryHash: string;
+  createdAt?: string;
+}): V1BetaEvent {
+  return V1BetaEventSchema.parse({
+    eventId: input.eventId ?? "v1-beta-event-payment-started-mock",
+    eventType: "payment_started_mock",
+    source: "conversion_action_shell",
+    anonymousSessionId: input.anonymousSessionId,
+    homeId: input.homeId,
+    schemeId: input.schemeId,
+    floorplanRevisionId: input.floorplanRevisionId,
+    sceneContractId: input.sceneContractId,
+    geometryHash: input.geometryHash,
+    stageId: "conversion_intent",
+    metadata: {
+      mode: "mock",
+      actionId: "conversion-payment-started-mock"
+    },
+    createdAt: input.createdAt ?? v1BetaEventFixtureTimestamp
+  });
+}
+
+export function buildV1BetaConversionDebugFixture(): V1BetaConversionDebugPayload {
+  const base = {
+    homeId: "home-beta-flow-fixture",
+    schemeId: "scheme-beta-flow-fixture",
+    floorplanRevisionId: "canonical-beta-flow-fixture",
+    sceneContractId: "scene-beta-flow-fixture",
+    geometryHash: v1BetaEventFixtureGeometryHash
+  };
+  const actionSet = buildV1BetaConversionActionSet(base);
+  const paymentStartedMockEvent = createPaymentStartedMockEvent({
+    ...base,
+    anonymousSessionId: "session-v1-beta-fixture"
+  });
+
+  return V1BetaConversionDebugPayloadSchema.parse({
+    ok: true,
+    actionSet,
+    paymentStartedMockEvent,
     generatedAt: v1BetaEventFixtureTimestamp
   });
 }
