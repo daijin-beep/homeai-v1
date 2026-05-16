@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   resolve: {
     alias: {
+      "@homeai/analytics": fileURLToPath(new URL("./packages/analytics/src/index.ts", import.meta.url)),
       "@homeai/contracts": fileURLToPath(new URL("./packages/contracts/src/index.ts", import.meta.url)),
       "@homeai/creative-render-spec": fileURLToPath(new URL("./packages/creative-render-spec/src/index.ts", import.meta.url)),
       "@homeai/creative-render-spec/fixtures": fileURLToPath(new URL("./packages/creative-render-spec/src/fixtures.ts", import.meta.url)),
