@@ -8,6 +8,14 @@ ADS owns runtime validation, provider gating, render verification, bakeoff, and 
 
 Batch 12 defines the handoff boundary only. Codex does not import ADS runtime packages and ADS must not write Space Truth.
 
+## Freeze Status
+
+`CreativeRenderSpec` freeze is active, not deferred.
+
+ADS should cite `docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md` and this
+consumer contract as the current freeze reference. Older ADS branch notes that
+describe the freeze as deferred are stale.
+
 ## ADS Input
 
 ADS receives `CreativeRenderSpec` as a readonly object.
@@ -47,6 +55,16 @@ If those values do not match, ADS must reject the spec.
 
 ADS must not add fallback ids or infer missing geometry context from provider output.
 
+## Render Trace Source
+
+L1 verifier output should use the canonical trace source:
+
+```text
+RenderTrace.sourceModule = render_verifier_l1
+```
+
+Do not introduce ADS-local source module strings for verifier reports.
+
 ## Readonly Rules
 
 ADS may:
@@ -81,7 +99,8 @@ ADS recovery work must stay runtime-only until reviewed separately.
 This document must remain readable in GitHub raw view with ordinary physical line breaks.
 
 - Store the file as UTF-8 text without a byte order mark.
-- Use ordinary LF or CRLF newline bytes only.
+- Use ordinary LF newline bytes only.
+- Do not include carriage return bytes.
 - Do not serialize this document as escaped newline text.
 - Do not collapse this document into one physical line.
 - Do not include zero-width, bidi, line-separator, paragraph-separator, or other format control characters.
@@ -95,4 +114,5 @@ Reviewers must be able to fetch this exact file from a commit raw URL and see mu
 - The second physical line must be blank.
 - The third physical line must be `## Boundary`.
 - The raw file must have more than fifty physical LF bytes.
+- The raw file must end with an LF byte.
 - The raw file must not contain non-ASCII bytes.
