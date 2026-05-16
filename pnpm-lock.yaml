@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@homeai/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
