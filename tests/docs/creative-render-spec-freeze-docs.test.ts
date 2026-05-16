@@ -97,6 +97,8 @@ describe("CreativeRenderSpec freeze documentation", () => {
     expect(hasByteOrderMark(bytes)).toBe(false);
     expect(countByte(bytes, lineFeedByte)).toBeGreaterThan(guard.minimumLfBytes);
     expect(countByte(bytes, carriageReturnByte)).toBe(0);
+    expect(bytes[bytes.length - 1]).toBe(lineFeedByte);
+    expect(lines.length).toBe(countByte(bytes, lineFeedByte) + 1);
     expect(text).not.toContain(escapedNewline);
     expect(hasNonAsciiByte(bytes)).toBe(false);
     expect(hiddenUnicodeCategoryPattern.test(text)).toBe(false);

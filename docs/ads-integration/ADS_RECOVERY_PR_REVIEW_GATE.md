@@ -84,4 +84,5 @@ Reviewers must be able to fetch this exact file from a commit raw URL and see mu
 - The second physical line must be blank.
 - The third physical line must be `## Current PR Handling`.
 - The raw file must have more than thirty physical LF bytes.
+- The raw file must end with an LF byte.
 - The raw file must not contain non-ASCII bytes.
