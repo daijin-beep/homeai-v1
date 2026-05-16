@@ -62,6 +62,9 @@ importers:
       '@homeai/soft-decor-gps':
         specifier: workspace:*
         version: link:../../packages/soft-decor-gps
+      '@homeai/v1-beta-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/v1-beta-fixtures
       next:
         specifier: latest
         version: 16.2.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -205,6 +208,28 @@ importers:
       '@homeai/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: latest
+        version: 6.0.3
+
+  packages/v1-beta-fixtures:
+    dependencies:
+      '@homeai/analytics':
+        specifier: workspace:*
+        version: link:../analytics
+      '@homeai/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@homeai/render-pipeline':
+        specifier: workspace:*
+        version: link:../render-pipeline
+      '@homeai/scheme-page':
+        specifier: workspace:*
+        version: link:../scheme-page
+      '@homeai/soft-decor-gps':
+        specifier: workspace:*
+        version: link:../soft-decor-gps
     devDependencies:
       typescript:
         specifier: latest

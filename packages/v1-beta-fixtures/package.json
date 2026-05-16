@@ -1,0 +1,25 @@
+{
+  "name": "@homeai/v1-beta-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@homeai/analytics": "workspace:*",
+    "@homeai/contracts": "workspace:*",
+    "@homeai/render-pipeline": "workspace:*",
+    "@homeai/scheme-page": "workspace:*",
+    "@homeai/soft-decor-gps": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}

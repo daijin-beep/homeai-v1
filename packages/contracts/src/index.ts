@@ -40,3 +40,4 @@ export * from "./scheme-render-gallery.js";
 export * from "./v1-beta-flow.js";
 export * from "./v1-beta-event.js";
 export * from "./v1-beta-conversion.js";
+export * from "./v1-beta-fixture-harness.js";

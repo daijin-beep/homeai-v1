@@ -16,6 +16,7 @@
     "@homeai/render-pipeline": "workspace:*",
     "@homeai/scheme-page": "workspace:*",
     "@homeai/soft-decor-gps": "workspace:*",
+    "@homeai/v1-beta-fixtures": "workspace:*",
     "next": "latest",
     "react": "19.2.6",
     "react-dom": "19.2.6"
