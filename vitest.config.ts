@@ -71,6 +71,12 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      "@homeai/soft-decor-gps": fileURLToPath(
+        new URL(
+          "./packages/soft-decor-gps/src/index.ts",
+          import.meta.url,
+        ),
+      ),
     },
   },
   test: {

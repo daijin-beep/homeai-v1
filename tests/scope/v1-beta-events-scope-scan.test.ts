@@ -32,7 +32,7 @@ const batch19RawGuardFiles = [
     path: "apps/web/app/dev/v1-beta-events-debug/page.tsx",
     expectedLfBytes: 158,
   },
-  { path: "apps/web/package.json", expectedLfBytes: 26 },
+  { path: "apps/web/package.json", expectedLfBytes: 27 },
   {
     path: "packages/analytics/package.json",
     expectedLfBytes: 21,
@@ -49,7 +49,7 @@ const batch19RawGuardFiles = [
     path: "packages/contracts/src/v1-beta-event.ts",
     expectedLfBytes: 120,
   },
-  { path: "pnpm-lock.yaml", expectedLfBytes: 2565 },
+  { path: "pnpm-lock.yaml", expectedLfBytes: 2568 },
   {
     path: "tests/analytics/v1-beta-event-repository.test.ts",
     expectedLfBytes: 63,
@@ -70,7 +70,7 @@ const batch19RawGuardFiles = [
     path: "tests/scope/v1-beta-events-scope-scan.test.ts",
     expectedLfBytes: 242,
   },
-  { path: "vitest.config.ts", expectedLfBytes: 81 },
+  { path: "vitest.config.ts", expectedLfBytes: 87 },
 ];
 
 describe("V1 Beta events scope scan", () => {
