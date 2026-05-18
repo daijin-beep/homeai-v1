@@ -9,17 +9,33 @@ const files = [
   "tests/docs/creative-render-spec-freeze-docs-format.test.ts"
 ];
 
+const batch16RawGuardFiles = [
+  "docs/ads-integration/CREATIVE_RENDER_SPEC_ADS_DISPATCH_PAYLOAD.md",
+  "packages/contracts/src/creative-render-spec.ts",
+  "packages/creative-render-spec/src/index.ts",
+  "tests/contracts/creative-render-spec-contracts.test.ts",
+  "tests/creative-render-spec/creative-render-spec-compiler-hardening.test.ts",
+  "tests/docs/creative-render-spec-freeze-docs.test.ts",
+  "tests/docs/creative-render-spec-freeze-docs-format.test.ts"
+];
+
 const docs = files.filter((path) => path.endsWith(".md"));
 const minimumLfBytesByPath = new Map<string, number>([
   ["docs/render-pipeline/CREATIVE_RENDER_SPEC_FREEZE.md", 50],
   ["docs/ads-integration/ADS_CONSUMER_CONTRACT.md", 50],
   ["docs/ads-integration/ADS_RECOVERY_PR_REVIEW_GATE.md", 30],
   ["docs/ads-integration/CREATIVE_RENDER_SPEC_ADS_DISPATCH_PAYLOAD.md", 50],
+  ["packages/contracts/src/creative-render-spec.ts", 300],
+  ["packages/creative-render-spec/src/index.ts", 800],
+  ["tests/contracts/creative-render-spec-contracts.test.ts", 100],
+  ["tests/creative-render-spec/creative-render-spec-compiler-hardening.test.ts", 200],
+  ["tests/docs/creative-render-spec-freeze-docs.test.ts", 100],
   ["tests/docs/creative-render-spec-freeze-docs-format.test.ts", 25]
 ]);
 
 const byteOrderMark = [0xef, 0xbb, 0xbf];
 const lineFeedByte = 0x0a;
+const carriageReturnByte = 0x0d;
 const carriageReturn = String.fromCharCode(13);
 const lineFeed = String.fromCharCode(10);
 const escapedNewline = String.fromCharCode(92) + "n";
@@ -28,6 +44,8 @@ const lineSeparatorCategory = /^\p{Zl}$/u;
 const paragraphSeparatorCategory = /^\p{Zp}$/u;
 const forbiddenCodePoints = new Set([
   0x200b,
+  0x200c,
+  0x200d,
   0x200e,
   0x200f,
   0x2028,
@@ -58,6 +76,23 @@ describe("Batch 12 docs markdown formatting", () => {
     expect(text).not.toContain(escapedNewline);
     expect(hiddenCharacters).toEqual([]);
     expect(nonAsciiBytes).toEqual([]);
+  });
+
+  it.each(batch16RawGuardFiles)("%s has strict Batch 16 ASCII LF raw formatting", (path) => {
+    const bytes = readFileSync(path);
+    const text = bytes.toString("utf8");
+    const physicalLfCount = countByte(bytes, lineFeedByte);
+    const lines = text.split(lineFeed);
+    const minimumLfBytes = minimumLfBytesByPath.get(path) ?? 25;
+
+    expect(Array.from(bytes.subarray(0, 3))).not.toEqual(byteOrderMark);
+    expect(physicalLfCount).toBeGreaterThan(minimumLfBytes);
+    expect(countByte(bytes, carriageReturnByte)).toBe(0);
+    expect(bytes[bytes.length - 1]).toBe(lineFeedByte);
+    expect(lines.length).toBe(physicalLfCount + 1);
+    expect(text).not.toContain(escapedNewline);
+    expect(findHiddenCharacters(text)).toEqual([]);
+    expect(findNonAsciiBytes(bytes)).toEqual([]);
   });
 
   it.each(docs)("%s has readable markdown structure", (path) => {
