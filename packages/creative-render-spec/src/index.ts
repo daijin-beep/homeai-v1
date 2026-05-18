@@ -1,6 +1,8 @@
 import {
   CreativeRenderSpecBatchSchema,
   CreativeRenderSpecDebugPayloadSchema,
+  CreativeRenderSpecCompilerOutputSchema,
+  CreativeRenderSpecDispatchPayloadSchema,
   CreativeRenderSpecInputSchema,
   CreativeRenderSpecPreviewRequestSchema,
   CreativeRenderSpecSchema,
@@ -12,6 +14,14 @@ import {
   type CreativeRenderAssetKind,
   type CreativeRenderAssetRef,
   type CreativeRenderCameraRef,
+  type CreativeRenderSpecBatchSummary,
+  type CreativeRenderSpecCompilerIssue,
+  type CreativeRenderSpecCompilerOutput,
+  type CreativeRenderSpecCompilerTrace,
+  type CreativeRenderSpecCoveragePolicy,
+  type CreativeRenderSpecCoverageStatus,
+  type CreativeRenderSpecDispatchPayload,
+  type CreativeRenderSpecRoomCoverageSummary,
   type CreativeRenderSpec,
   type CreativeRenderSpecBatch,
   type CreativeRenderSpecDebugPayload,
@@ -82,71 +92,6 @@ export const ADS_FREEZE_REQUIRED_INPUT_FIELDS = [
 ] as const;
 export const ADS_FREEZE_REQUIRED_FORBIDDEN_CHANGES = REQUIRED_FORBIDDEN_CHANGES;
 
-export type CreativeRenderSpecCoverageStatus =
-  | "covered"
-  | "cautious"
-  | "non_renderable"
-  | "missing_scheme_room"
-  | "missing_camera_plan"
-  | "missing_asset"
-  | "insufficient_specs"
-  | "geometry_hash_mismatch"
-  | "invalid_spec";
-
-export type CreativeRenderSpecCompilerIssue = {
-  issueId: string;
-  severity: "info" | "warning" | "blocking";
-  code: string;
-  message: string;
-  roomId?: string;
-  cameraId?: string;
-  assetKind?: CreativeRenderAssetKind;
-};
-
-export type CreativeRenderSpecCoveragePolicy = {
-  includeCautiousRooms: boolean;
-  minSpecsPerValidRoom: number;
-};
-
-export type CreativeRenderSpecRoomCoverageSummary = {
-  roomId: string;
-  roomType: P1RoomType;
-  status: CreativeRenderSpecCoverageStatus;
-  renderableCameraCount: number;
-  emittedSpecCount: number;
-  requiredSpecCount: number;
-  cameraIds: string[];
-  specIds: string[];
-  issueIds: string[];
-};
-
-export type CreativeRenderSpecBatchSummary = {
-  status: DesignKernelStatus;
-  policy: CreativeRenderSpecCoveragePolicy;
-  sceneRoomCount: number;
-  coveredRoomCount: number;
-  cautiousRoomCount: number;
-  nonRenderableRoomCount: number;
-  missingRoomCount: number;
-  renderableCameraCount: number;
-  emittedSpecCount: number;
-  rooms: CreativeRenderSpecRoomCoverageSummary[];
-};
-
-export type CreativeRenderSpecCompilerTrace = {
-  traceId: string;
-  compilerName: "deterministic_creative_render_spec_compiler";
-  compilerVersion: string;
-  mode: "contract_only";
-  homeId: string;
-  floorplanRevisionId: string;
-  sceneContractId: string;
-  geometryHash: string;
-  networkCalls: false;
-  startedAt: string;
-  completedAt: string;
-};
-
 export type CreativeRenderSpecCompilerInput = {
   schemeLiteContract: SchemeLiteContract;
   sceneContract: P1SceneContractV02;
@@ -156,13 +101,6 @@ export type CreativeRenderSpecCompilerInput = {
   createdAt?: string;
   compilerVersion?: string;
   traceId?: string;
-};
-
-export type CreativeRenderSpecCompilerOutput = {
-  specs: CreativeRenderSpec[];
-  summary: CreativeRenderSpecBatchSummary;
-  issues: CreativeRenderSpecCompilerIssue[];
-  trace: CreativeRenderSpecCompilerTrace;
 };
 
 export function buildCreativeRenderSpecInputFromSchemeLite(
@@ -366,7 +304,7 @@ export function compileCreativeRenderSpecsForScheme(
   const traceIssues = traceAlignmentIssues(input);
 
   if (traceIssues.length > 0) {
-    return deepFreeze({
+    return parseCompilerOutput({
       specs: [],
       summary: buildCompilerSummary({
         policy: input.policy,
@@ -509,7 +447,7 @@ export function compileCreativeRenderSpecsForScheme(
     ));
   }
 
-  return deepFreeze({
+  return parseCompilerOutput({
     specs: specs.map((spec) => CreativeRenderSpecSchema.parse(spec)),
     summary: buildCompilerSummary({
       policy: input.policy,
@@ -530,6 +468,35 @@ export function validateCreativeRenderSpecCoverage(
     issues: output.issues,
     trace: output.trace
   });
+}
+
+export function buildCreativeRenderSpecAdsDispatchPayload(
+  rawInput: CreativeRenderSpecCompilerInput
+): CreativeRenderSpecDispatchPayload {
+  const input = parseCompilerInput(rawInput);
+  const output = compileCreativeRenderSpecsForScheme(input);
+
+  return deepFreeze(CreativeRenderSpecDispatchPayloadSchema.parse({
+    dispatchId: `crs-dispatch-${sanitizeId(input.schemeLiteContract.schemeId)}`,
+    schemeId: input.schemeLiteContract.schemeId,
+    homeId: input.sceneContract.homeId,
+    floorplanRevisionId: input.sceneContract.canonicalRevisionId,
+    sceneContractId: input.sceneContract.sceneContractId,
+    geometryHash: input.sceneContract.geometryHash,
+    ...(input.schemeLiteContract.layoutIntentHash === undefined ? {} : { layoutIntentHash: input.schemeLiteContract.layoutIntentHash }),
+    status: output.summary.status,
+    specs: output.specs,
+    rooms: output.summary.rooms.map((room) => ({
+      roomId: room.roomId,
+      roomType: room.roomType,
+      status: dispatchStatusForCoverage(room.status),
+      renderSpecIds: room.specIds,
+      issueIds: room.issueIds
+    })),
+    coverage: output.summary,
+    trace: output.trace,
+    createdAt: output.trace.completedAt
+  }));
 }
 
 function compileRoomSpec(
@@ -901,6 +868,22 @@ function buildCompilerSummary(input: {
     emittedSpecCount: input.rooms.reduce((sum, room) => sum + room.emittedSpecCount, 0),
     rooms: [...input.rooms].sort((a, b) => a.roomId.localeCompare(b.roomId))
   };
+}
+
+function parseCompilerOutput(output: CreativeRenderSpecCompilerOutput): CreativeRenderSpecCompilerOutput {
+  return deepFreeze(CreativeRenderSpecCompilerOutputSchema.parse(output));
+}
+
+function dispatchStatusForCoverage(
+  status: CreativeRenderSpecCoverageStatus
+): CreativeRenderSpecDispatchPayload["rooms"][number]["status"] {
+  if (status === "covered" || status === "cautious") {
+    return "ready";
+  }
+  if (status === "missing_asset") {
+    return "render_asset_pending";
+  }
+  return "render_ineligible";
 }
 
 function aggregateCompilerStatus(issues: readonly CreativeRenderSpecCompilerIssue[]): DesignKernelStatus {

@@ -193,6 +193,227 @@ export const CreativeRenderSpecProviderTraceSchema = z
   })
   .strict();
 
+export const CreativeRenderSpecCoverageStatusSchema = z.enum([
+  "covered",
+  "cautious",
+  "non_renderable",
+  "missing_scheme_room",
+  "missing_camera_plan",
+  "missing_asset",
+  "insufficient_specs",
+  "geometry_hash_mismatch",
+  "invalid_spec"
+]);
+
+export const CreativeRenderSpecCompilerIssueSchema = z
+  .object({
+    issueId: IdSchema,
+    severity: z.enum(["info", "warning", "blocking"]),
+    code: z.string().min(1),
+    message: z.string().min(1),
+    roomId: IdSchema.optional(),
+    cameraId: IdSchema.optional(),
+    assetKind: CreativeRenderAssetKindSchema.optional()
+  })
+  .strict();
+
+export const CreativeRenderSpecCoveragePolicySchema = z
+  .object({
+    includeCautiousRooms: z.boolean(),
+    minSpecsPerValidRoom: z.number().int().positive()
+  })
+  .strict();
+
+export const CreativeRenderSpecRoomCoverageSummarySchema = z
+  .object({
+    roomId: IdSchema,
+    roomType: P1RoomTypeSchema,
+    status: CreativeRenderSpecCoverageStatusSchema,
+    renderableCameraCount: z.number().int().nonnegative(),
+    emittedSpecCount: z.number().int().nonnegative(),
+    requiredSpecCount: z.number().int().nonnegative(),
+    cameraIds: z.array(IdSchema),
+    specIds: z.array(IdSchema),
+    issueIds: z.array(IdSchema)
+  })
+  .strict()
+  .superRefine((room, ctx) => {
+    if (room.emittedSpecCount !== room.specIds.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "emittedSpecCount must match specIds",
+        path: ["emittedSpecCount"]
+      });
+    }
+    if (room.renderableCameraCount !== room.cameraIds.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "renderableCameraCount must match cameraIds",
+        path: ["renderableCameraCount"]
+      });
+    }
+    if (room.status === "non_renderable" && (room.requiredSpecCount !== 0 || room.emittedSpecCount !== 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "non_renderable rooms must not require or emit specs",
+        path: ["status"]
+      });
+    }
+  });
+
+export const CreativeRenderSpecBatchSummarySchema = z
+  .object({
+    status: DesignKernelStatusSchema,
+    policy: CreativeRenderSpecCoveragePolicySchema,
+    sceneRoomCount: z.number().int().nonnegative(),
+    coveredRoomCount: z.number().int().nonnegative(),
+    cautiousRoomCount: z.number().int().nonnegative(),
+    nonRenderableRoomCount: z.number().int().nonnegative(),
+    missingRoomCount: z.number().int().nonnegative(),
+    renderableCameraCount: z.number().int().nonnegative(),
+    emittedSpecCount: z.number().int().nonnegative(),
+    rooms: z.array(CreativeRenderSpecRoomCoverageSummarySchema)
+  })
+  .strict()
+  .superRefine((summary, ctx) => {
+    const coveredRooms = summary.rooms.filter((room) => room.status === "covered" || room.status === "cautious").length;
+    const cautiousRooms = summary.rooms.filter((room) => room.status === "cautious").length;
+    const nonRenderableRooms = summary.rooms.filter((room) => room.status === "non_renderable").length;
+    const missingRooms = summary.rooms.filter((room) =>
+      room.status !== "covered" && room.status !== "cautious" && room.status !== "non_renderable"
+    ).length;
+    const renderableCameraCount = summary.rooms.reduce((sum, room) => sum + room.renderableCameraCount, 0);
+    const emittedSpecCount = summary.rooms.reduce((sum, room) => sum + room.emittedSpecCount, 0);
+
+    const checks = [
+      { path: ["sceneRoomCount"], actual: summary.sceneRoomCount, expected: summary.rooms.length },
+      { path: ["coveredRoomCount"], actual: summary.coveredRoomCount, expected: coveredRooms },
+      { path: ["cautiousRoomCount"], actual: summary.cautiousRoomCount, expected: cautiousRooms },
+      { path: ["nonRenderableRoomCount"], actual: summary.nonRenderableRoomCount, expected: nonRenderableRooms },
+      { path: ["missingRoomCount"], actual: summary.missingRoomCount, expected: missingRooms },
+      { path: ["renderableCameraCount"], actual: summary.renderableCameraCount, expected: renderableCameraCount },
+      { path: ["emittedSpecCount"], actual: summary.emittedSpecCount, expected: emittedSpecCount }
+    ];
+
+    for (const check of checks) {
+      if (check.actual !== check.expected) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${check.path[0]} must match room coverage`,
+          path: check.path
+        });
+      }
+    }
+  });
+
+export const CreativeRenderSpecCompilerTraceSchema = z
+  .object({
+    traceId: IdSchema,
+    compilerName: z.literal("deterministic_creative_render_spec_compiler"),
+    compilerVersion: z.string().min(1),
+    mode: z.literal("contract_only"),
+    homeId: IdSchema,
+    floorplanRevisionId: IdSchema,
+    sceneContractId: IdSchema,
+    geometryHash: GeometryHashSchema,
+    networkCalls: z.literal(false),
+    startedAt: TimestampSchema,
+    completedAt: TimestampSchema
+  })
+  .strict();
+
+export const CreativeRenderSpecCompilerOutputSchema = z
+  .object({
+    specs: z.array(CreativeRenderSpecSchema),
+    summary: CreativeRenderSpecBatchSummarySchema,
+    issues: z.array(CreativeRenderSpecCompilerIssueSchema),
+    trace: CreativeRenderSpecCompilerTraceSchema
+  })
+  .strict()
+  .superRefine((output, ctx) => {
+    if (output.summary.emittedSpecCount !== output.specs.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "summary emittedSpecCount must match specs",
+        path: ["summary", "emittedSpecCount"]
+      });
+    }
+    const issueIds = new Set(output.issues.map((issue) => issue.issueId));
+    for (const [roomIndex, room] of output.summary.rooms.entries()) {
+      for (const issueId of room.issueIds) {
+        if (!issueIds.has(issueId)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "room issueIds must reference compiler issues",
+            path: ["summary", "rooms", roomIndex, "issueIds"]
+          });
+        }
+      }
+    }
+  });
+
+export const CreativeRenderSpecDispatchRoomStatusSchema = z.enum([
+  "ready",
+  "render_asset_pending",
+  "render_ineligible"
+]);
+
+export const CreativeRenderSpecDispatchRoomSchema = z
+  .object({
+    roomId: IdSchema,
+    roomType: P1RoomTypeSchema,
+    status: CreativeRenderSpecDispatchRoomStatusSchema,
+    renderSpecIds: z.array(IdSchema),
+    issueIds: z.array(IdSchema)
+  })
+  .strict()
+  .superRefine((room, ctx) => {
+    if (room.status === "ready" && room.renderSpecIds.length === 0) {
+      ctx.addIssue({ code: "custom", message: "ready rooms must include renderSpecIds", path: ["renderSpecIds"] });
+    }
+    if (room.status !== "ready" && room.renderSpecIds.length > 0) {
+      ctx.addIssue({ code: "custom", message: "non-ready rooms must not include renderSpecIds", path: ["renderSpecIds"] });
+    }
+  });
+
+export const CreativeRenderSpecDispatchPayloadSchema = z
+  .object({
+    dispatchId: IdSchema,
+    schemeId: IdSchema,
+    homeId: IdSchema,
+    floorplanRevisionId: IdSchema,
+    sceneContractId: IdSchema,
+    geometryHash: GeometryHashSchema,
+    layoutIntentHash: LayoutIntentHashSchema.optional(),
+    status: DesignKernelStatusSchema,
+    specs: z.array(CreativeRenderSpecSchema),
+    rooms: z.array(CreativeRenderSpecDispatchRoomSchema),
+    coverage: CreativeRenderSpecBatchSummarySchema,
+    trace: CreativeRenderSpecCompilerTraceSchema,
+    createdAt: TimestampSchema
+  })
+  .strict()
+  .superRefine((payload, ctx) => {
+    if (payload.coverage.sceneRoomCount !== payload.rooms.length) {
+      ctx.addIssue({ code: "custom", message: "dispatch rooms must match coverage", path: ["rooms"] });
+    }
+    if (payload.coverage.emittedSpecCount !== payload.specs.length) {
+      ctx.addIssue({ code: "custom", message: "dispatch specs must match coverage", path: ["specs"] });
+    }
+    for (const [index, spec] of payload.specs.entries()) {
+      if (
+        spec.schemeId !== payload.schemeId ||
+        spec.homeId !== payload.homeId ||
+        spec.floorplanRevisionId !== payload.floorplanRevisionId ||
+        spec.sceneContractId !== payload.sceneContractId ||
+        spec.geometryHash !== payload.geometryHash ||
+        spec.layoutIntentHash !== payload.layoutIntentHash
+      ) {
+        ctx.addIssue({ code: "custom", message: "dispatch spec trace must match payload", path: ["specs", index] });
+      }
+    }
+  });
+
 export const CreativeRenderSpecBatchSchema = z
   .object({
     batchId: IdSchema,
@@ -309,6 +530,16 @@ export type CreativeRenderSpec = z.infer<typeof CreativeRenderSpecSchema>;
 export type CreativeRenderSpecVerificationCheck = z.infer<typeof CreativeRenderSpecVerificationCheckSchema>;
 export type CreativeRenderSpecVerification = z.infer<typeof CreativeRenderSpecVerificationSchema>;
 export type CreativeRenderSpecProviderTrace = z.infer<typeof CreativeRenderSpecProviderTraceSchema>;
+export type CreativeRenderSpecCoverageStatus = z.infer<typeof CreativeRenderSpecCoverageStatusSchema>;
+export type CreativeRenderSpecCompilerIssue = z.infer<typeof CreativeRenderSpecCompilerIssueSchema>;
+export type CreativeRenderSpecCoveragePolicy = z.infer<typeof CreativeRenderSpecCoveragePolicySchema>;
+export type CreativeRenderSpecRoomCoverageSummary = z.infer<typeof CreativeRenderSpecRoomCoverageSummarySchema>;
+export type CreativeRenderSpecBatchSummary = z.infer<typeof CreativeRenderSpecBatchSummarySchema>;
+export type CreativeRenderSpecCompilerTrace = z.infer<typeof CreativeRenderSpecCompilerTraceSchema>;
+export type CreativeRenderSpecCompilerOutput = z.infer<typeof CreativeRenderSpecCompilerOutputSchema>;
+export type CreativeRenderSpecDispatchRoomStatus = z.infer<typeof CreativeRenderSpecDispatchRoomStatusSchema>;
+export type CreativeRenderSpecDispatchRoom = z.infer<typeof CreativeRenderSpecDispatchRoomSchema>;
+export type CreativeRenderSpecDispatchPayload = z.infer<typeof CreativeRenderSpecDispatchPayloadSchema>;
 export type CreativeRenderSpecBatch = z.infer<typeof CreativeRenderSpecBatchSchema>;
 export type CreativeRenderSpecInput = z.infer<typeof CreativeRenderSpecInputSchema>;
 export type CreativeRenderSpecDebugPayload = z.infer<typeof CreativeRenderSpecDebugPayloadSchema>;
