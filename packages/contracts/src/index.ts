@@ -14,13 +14,13 @@ export {
   RenderBatchStatusSchema,
   RenderBatchSchema,
   RenderImageAssetSchema,
-  RenderVerificationStatusSchema as LegacyRenderVerificationStatusSchema
+  RenderVerificationStatusSchema as LegacyRenderVerificationStatusSchema,
 } from "./render.js";
 export type {
   RenderImageSpec,
   RenderBatch,
   RenderImageAsset,
-  RenderVerificationStatus as LegacyRenderVerificationStatus
+  RenderVerificationStatus as LegacyRenderVerificationStatus,
 } from "./render.js";
 export * from "./render-job.js";
 export * from "./render-gallery-eligibility.js";

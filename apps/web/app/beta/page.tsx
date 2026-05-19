@@ -1,6 +1,6 @@
 import {
   V1BetaFlowShell,
-  buildV1BetaFlowShellFixture
+  buildV1BetaFlowShellFixture,
 } from "../../components/v1-beta-flow/V1BetaFlowShell.js";
 
 export default function V1BetaPage() {

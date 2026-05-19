@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  IdSchema,
-  TimestampSchema
-} from "./common.js";
+import { IdSchema, TimestampSchema } from "./common.js";
 import { GeometryHashSchema } from "./p1-floorplan-adjustment.js";
 
 export const V1BetaFlowStageIdSchema = z.enum([
@@ -11,7 +8,7 @@ export const V1BetaFlowStageIdSchema = z.enum([
   "scheme_review",
   "render_review",
   "decor_matching",
-  "conversion_intent"
+  "conversion_intent",
 ]);
 
 export const V1BetaFlowStageStatusSchema = z.enum([
@@ -19,7 +16,7 @@ export const V1BetaFlowStageStatusSchema = z.enum([
   "current",
   "ready",
   "needs_review",
-  "locked"
+  "locked",
 ]);
 
 export const V1BetaFlowStageSchema = z
@@ -30,7 +27,7 @@ export const V1BetaFlowStageSchema = z
     summary: z.string().min(1),
     primaryHref: z.string().min(1).optional(),
     itemCount: z.number().int().nonnegative().optional(),
-    issueCount: z.number().int().nonnegative().optional()
+    issueCount: z.number().int().nonnegative().optional(),
   })
   .strict();
 
@@ -42,7 +39,7 @@ export const V1BetaFlowSummarySchema = z
     lockedStages: z.number().int().nonnegative(),
     needsReviewStages: z.number().int().nonnegative(),
     currentStageId: V1BetaFlowStageIdSchema,
-    status: z.enum(["in_progress", "needs_review", "ready_for_next_batch"])
+    status: z.enum(["in_progress", "needs_review", "ready_for_next_batch"]),
   })
   .strict();
 
@@ -53,7 +50,7 @@ export const V1BetaFlowGuardrailsSchema = z
     realProviderEnabled: z.literal(false),
     networkCallsEnabled: z.literal(false),
     confirmedGeometryMutable: z.literal(false),
-    downstreamCommerceEnabled: z.literal(false)
+    downstreamCommerceEnabled: z.literal(false),
   })
   .strict();
 
@@ -70,7 +67,7 @@ export const V1BetaFlowViewModelSchema = z
     summary: V1BetaFlowSummarySchema,
     stages: z.array(V1BetaFlowStageSchema).min(1),
     guardrails: V1BetaFlowGuardrailsSchema,
-    generatedAt: TimestampSchema
+    generatedAt: TimestampSchema,
   })
   .strict()
   .superRefine((flow, ctx) => {
@@ -78,14 +75,22 @@ export const V1BetaFlowViewModelSchema = z
       ctx.addIssue({
         code: "custom",
         message: "summary totalStages must match stages",
-        path: ["summary", "totalStages"]
+        path: ["summary", "totalStages"],
       });
     }
 
-    const completeStages = flow.stages.filter((stage) => stage.status === "complete").length;
-    const readyStages = flow.stages.filter((stage) => stage.status === "ready").length;
-    const lockedStages = flow.stages.filter((stage) => stage.status === "locked").length;
-    const needsReviewStages = flow.stages.filter((stage) => stage.status === "needs_review").length;
+    const completeStages = flow.stages.filter(
+      (stage) => stage.status === "complete",
+    ).length;
+    const readyStages = flow.stages.filter(
+      (stage) => stage.status === "ready",
+    ).length;
+    const lockedStages = flow.stages.filter(
+      (stage) => stage.status === "locked",
+    ).length;
+    const needsReviewStages = flow.stages.filter(
+      (stage) => stage.status === "needs_review",
+    ).length;
     if (
       flow.summary.completeStages !== completeStages ||
       flow.summary.readyStages !== readyStages ||
@@ -95,17 +100,26 @@ export const V1BetaFlowViewModelSchema = z
       ctx.addIssue({
         code: "custom",
         message: "summary stage counts must match stages",
-        path: ["summary"]
+        path: ["summary"],
       });
     }
 
-    const currentStageCount = flow.stages.filter((stage) => stage.status === "current").length;
-    const currentStage = flow.stages.find((stage) => stage.stageId === flow.summary.currentStageId);
-    if (currentStage === undefined || currentStage.status !== "current" || currentStageCount !== 1) {
+    const currentStageCount = flow.stages.filter(
+      (stage) => stage.status === "current",
+    ).length;
+    const currentStage = flow.stages.find(
+      (stage) => stage.stageId === flow.summary.currentStageId,
+    );
+    if (
+      currentStage === undefined ||
+      currentStage.status !== "current" ||
+      currentStageCount !== 1
+    ) {
       ctx.addIssue({
         code: "custom",
-        message: "flow must have exactly one current stage matching currentStageId",
-        path: ["summary", "currentStageId"]
+        message:
+          "flow must have exactly one current stage matching currentStageId",
+        path: ["summary", "currentStageId"],
       });
     }
   });

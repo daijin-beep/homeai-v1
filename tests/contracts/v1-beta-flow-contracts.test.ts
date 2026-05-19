@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   V1BetaFlowStageSchema,
   V1BetaFlowViewModelSchema,
-  type V1BetaFlowViewModel
+  type V1BetaFlowViewModel,
 } from "@homeai/contracts";
 
 const timestamp = "2026-05-16T00:00:00.000Z";
@@ -27,9 +27,9 @@ describe("V1 Beta flow contracts", () => {
         ...flow,
         summary: {
           ...flow.summary,
-          lockedStages: 0
-        }
-      }).success
+          lockedStages: 0,
+        },
+      }).success,
     ).toBe(false);
   });
 
@@ -40,9 +40,11 @@ describe("V1 Beta flow contracts", () => {
       V1BetaFlowViewModelSchema.safeParse({
         ...flow,
         stages: flow.stages.map((stage) =>
-          stage.stageId === "render_review" ? { ...stage, status: "complete" as const } : stage
-        )
-      }).success
+          stage.stageId === "render_review"
+            ? { ...stage, status: "complete" as const }
+            : stage,
+        ),
+      }).success,
     ).toBe(false);
   });
 
@@ -52,8 +54,8 @@ describe("V1 Beta flow contracts", () => {
         stageId: "contractor_handoff",
         status: "locked",
         label: "Unsupported stage",
-        summary: "Unsupported stage."
-      }).success
+        summary: "Unsupported stage.",
+      }).success,
     ).toBe(false);
   });
 });
@@ -75,7 +77,7 @@ function createFlow(): V1BetaFlowViewModel {
       lockedStages: 2,
       needsReviewStages: 0,
       currentStageId: "render_review",
-      status: "needs_review"
+      status: "needs_review",
     },
     stages: [
       {
@@ -84,7 +86,7 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Floorplan upload",
         summary: "Fixture floorplan is available.",
         itemCount: 1,
-        issueCount: 0
+        issueCount: 0,
       },
       {
         stageId: "space_confirmation",
@@ -92,7 +94,7 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Space confirmation",
         summary: "Confirmed geometry trace is read-only downstream.",
         itemCount: 7,
-        issueCount: 0
+        issueCount: 0,
       },
       {
         stageId: "scheme_review",
@@ -100,7 +102,7 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Scheme review",
         summary: "Full-space SchemeLite preview is ready.",
         itemCount: 7,
-        issueCount: 0
+        issueCount: 0,
       },
       {
         stageId: "render_review",
@@ -108,7 +110,7 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Room visual review",
         summary: "Render status is available from deterministic view models.",
         itemCount: 6,
-        issueCount: 1
+        issueCount: 1,
       },
       {
         stageId: "decor_matching",
@@ -116,7 +118,7 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Decor matching",
         summary: "Locked until local catalog admission is implemented.",
         itemCount: 0,
-        issueCount: 0
+        issueCount: 0,
       },
       {
         stageId: "conversion_intent",
@@ -124,8 +126,8 @@ function createFlow(): V1BetaFlowViewModel {
         label: "Conversion intent",
         summary: "Locked until mock conversion actions are implemented.",
         itemCount: 0,
-        issueCount: 0
-      }
+        issueCount: 0,
+      },
     ],
     guardrails: {
       deterministicFixturesOnly: true,
@@ -133,8 +135,8 @@ function createFlow(): V1BetaFlowViewModel {
       realProviderEnabled: false,
       networkCallsEnabled: false,
       confirmedGeometryMutable: false,
-      downstreamCommerceEnabled: false
+      downstreamCommerceEnabled: false,
     },
-    generatedAt: timestamp
+    generatedAt: timestamp,
   });
 }
