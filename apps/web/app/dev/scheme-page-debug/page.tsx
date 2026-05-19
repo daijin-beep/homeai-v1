@@ -21,7 +21,7 @@ export default function SchemePageDebugPage() {
         <h2 style={sectionTitleStyle}>Fixture Input</h2>
         <pre style={jsonStyle}>{JSON.stringify({ schemeId: scheme.schemeId }, null, 2)}</pre>
       </section>
-      <SchemePagePreview viewModel={debug.viewModel} showDebug />
+      <SchemePagePreview viewModel={debug.viewModel} renderStatusShell={debug.renderStatusShell} showDebug />
       <DevJsonPanel value={debug} />
     </div>
   );
