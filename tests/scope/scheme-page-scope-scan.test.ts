@@ -33,16 +33,16 @@ const forbiddenCodePoints = new Set([
 ]);
 
 const batch17RawGuardFiles = [
-  { path: "apps/web/app/dev/scheme-page-debug/page.tsx", minLfBytes: 40 },
-  { path: "apps/web/components/scheme-page/SchemePagePreview.tsx", minLfBytes: 250 },
-  { path: "packages/contracts/src/scheme-page.ts", minLfBytes: 200 },
-  { path: "packages/scheme-page/src/index.ts", minLfBytes: 400 },
-  { path: "tests/contracts/scheme-page-contracts.test.ts", minLfBytes: 90 },
-  { path: "tests/frontend/scheme-page-preview.test.tsx", minLfBytes: 40 },
-  { path: "tests/frontend/scheme-render-gallery-ui.test.tsx", minLfBytes: 50 },
-  { path: "tests/scheme-page/scheme-page-route.test.ts", minLfBytes: 80 },
-  { path: "tests/scheme-page/scheme-page-view-model.test.ts", minLfBytes: 120 },
-  { path: "tests/scope/scheme-page-scope-scan.test.ts", minLfBytes: 120 }
+  { path: "apps/web/app/dev/scheme-page-debug/page.tsx", expectedLfBytes: 57, minLfBytes: 40 },
+  { path: "apps/web/components/scheme-page/SchemePagePreview.tsx", expectedLfBytes: 373, minLfBytes: 250 },
+  { path: "packages/contracts/src/scheme-page.ts", expectedLfBytes: 309, minLfBytes: 200 },
+  { path: "packages/scheme-page/src/index.ts", expectedLfBytes: 584, minLfBytes: 400 },
+  { path: "tests/contracts/scheme-page-contracts.test.ts", expectedLfBytes: 139, minLfBytes: 90 },
+  { path: "tests/frontend/scheme-page-preview.test.tsx", expectedLfBytes: 62, minLfBytes: 40 },
+  { path: "tests/frontend/scheme-render-gallery-ui.test.tsx", expectedLfBytes: 70, minLfBytes: 50 },
+  { path: "tests/scheme-page/scheme-page-route.test.ts", expectedLfBytes: 102, minLfBytes: 80 },
+  { path: "tests/scheme-page/scheme-page-view-model.test.ts", expectedLfBytes: 160, minLfBytes: 120 },
+  { path: "tests/scope/scheme-page-scope-scan.test.ts", expectedLfBytes: 185, minLfBytes: 120 }
 ];
 
 describe("Scheme Page bounded scope scan", () => {
@@ -97,13 +97,14 @@ describe("Scheme Page bounded scope scan", () => {
     expect(hits).toEqual([]);
   });
 
-  it.each(batch17RawGuardFiles)("$path uses strict Batch 17A ASCII LF raw formatting", ({ path, minLfBytes }) => {
+  it.each(batch17RawGuardFiles)("$path uses strict Batch 17A ASCII LF raw formatting", ({ path, expectedLfBytes, minLfBytes }) => {
     const bytes = readFileSync(join(repoRoot, path));
     const text = bytes.toString("utf8");
     const physicalLfCount = countByte(bytes, lineFeedByte);
     const lines = text.split(lineFeed);
 
     expect(Array.from(bytes.subarray(0, 3))).not.toEqual(byteOrderMark);
+    expect(physicalLfCount).toBe(expectedLfBytes);
     expect(physicalLfCount).toBeGreaterThan(minLfBytes);
     expect(countByte(bytes, carriageReturnByte)).toBe(0);
     expect(bytes[bytes.length - 1]).toBe(lineFeedByte);
