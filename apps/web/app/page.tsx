@@ -5,7 +5,9 @@ export default function HomePage() {
         <p style={eyebrowStyle}>homeAI V1</p>
         <h1 style={titleStyle}>Beta flow shell</h1>
         <p style={mutedStyle}>Contract-first user preview for the current deterministic beta path.</p>
-        <a href="/beta" style={linkStyle}>Open beta flow</a>
+        <a href="/beta" style={linkStyle}>
+          Open beta flow
+        </a>
       </section>
     </main>
   );

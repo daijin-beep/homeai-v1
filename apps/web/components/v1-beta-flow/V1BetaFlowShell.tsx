@@ -22,9 +22,10 @@ export type V1BetaFlowShellFixture = {
 
 export function buildV1BetaFlowShellFixture(): V1BetaFlowShellFixture {
   const renderDebug = buildSchemeRenderGalleryDebugFixture("one_anchor_zone_warning");
-  const schemePageViewModel = buildSchemePageViewModelFromSchemeLite(renderDebug.schemeLiteContract, {
-    title: "homeAI V1 Beta"
-  });
+  const schemePageViewModel = buildSchemePageViewModelFromSchemeLite(
+    renderDebug.schemeLiteContract,
+    { title: "homeAI V1 Beta" }
+  );
   const renderStatusShell = buildSchemePageRenderStatusShell({
     viewModel: schemePageViewModel,
     renderGalleryViewModel: renderDebug.galleryViewModel
@@ -90,7 +91,9 @@ export function V1BetaFlowShell({
       <section data-testid="v1-beta-flow-stage-panel" style={panelStyle}>
         <div style={sectionHeaderStyle}>
           <h2 style={sectionTitleStyle}>Flow stages</h2>
-          <p style={mutedStyle}>{fixture.flow.summary.completeStages} complete / {fixture.flow.summary.lockedStages} locked</p>
+          <p style={mutedStyle}>
+            {fixture.flow.summary.completeStages} complete / {fixture.flow.summary.lockedStages} locked
+          </p>
         </div>
         <div style={stageGridStyle}>
           {fixture.flow.stages.map((stage) => (
@@ -139,7 +142,11 @@ function StageItem({ stage }: { stage: V1BetaFlowStage }) {
       <p style={mutedStyle}>
         {stage.itemCount ?? 0} items / {stage.issueCount ?? 0} issues
       </p>
-      {stage.primaryHref === undefined ? null : <a href={stage.primaryHref} style={linkStyle}>Open</a>}
+      {stage.primaryHref === undefined ? null : (
+        <a href={stage.primaryHref} style={linkStyle}>
+          Open
+        </a>
+      )}
     </article>
   );
 }

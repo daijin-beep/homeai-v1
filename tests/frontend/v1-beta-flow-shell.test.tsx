@@ -24,7 +24,10 @@ describe("V1 Beta flow shell", () => {
     expect(screen.getByTestId("v1-beta-flow-stage-floorplan_upload")).toHaveTextContent("complete");
     expect(screen.getByTestId("v1-beta-flow-stage-render_review")).toHaveTextContent("current");
     expect(screen.getByTestId("v1-beta-flow-stage-decor_matching")).toHaveTextContent("locked");
-    expect(screen.getByTestId("scheme-page-render-status-shell")).toHaveAttribute("data-source", "deterministic_fixture");
+    expect(screen.getByTestId("scheme-page-render-status-shell")).toHaveAttribute(
+      "data-source",
+      "deterministic_fixture"
+    );
     expect(screen.getByTestId("scheme-render-gallery-section")).toBeInTheDocument();
   });
 

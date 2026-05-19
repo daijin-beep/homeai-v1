@@ -22,33 +22,39 @@ describe("V1 Beta flow contracts", () => {
   it("rejects summary counts that drift from stages", () => {
     const flow = createFlow();
 
-    expect(V1BetaFlowViewModelSchema.safeParse({
-      ...flow,
-      summary: {
-        ...flow.summary,
-        lockedStages: 0
-      }
-    }).success).toBe(false);
+    expect(
+      V1BetaFlowViewModelSchema.safeParse({
+        ...flow,
+        summary: {
+          ...flow.summary,
+          lockedStages: 0
+        }
+      }).success
+    ).toBe(false);
   });
 
   it("rejects flows without exactly one current stage", () => {
     const flow = createFlow();
 
-    expect(V1BetaFlowViewModelSchema.safeParse({
-      ...flow,
-      stages: flow.stages.map((stage) =>
-        stage.stageId === "render_review" ? { ...stage, status: "complete" as const } : stage
-      )
-    }).success).toBe(false);
+    expect(
+      V1BetaFlowViewModelSchema.safeParse({
+        ...flow,
+        stages: flow.stages.map((stage) =>
+          stage.stageId === "render_review" ? { ...stage, status: "complete" as const } : stage
+        )
+      }).success
+    ).toBe(false);
   });
 
   it("rejects unknown beta flow stages", () => {
-    expect(V1BetaFlowStageSchema.safeParse({
-      stageId: "contractor_handoff",
-      status: "locked",
-      label: "Unsupported stage",
-      summary: "Unsupported stage."
-    }).success).toBe(false);
+    expect(
+      V1BetaFlowStageSchema.safeParse({
+        stageId: "contractor_handoff",
+        status: "locked",
+        label: "Unsupported stage",
+        summary: "Unsupported stage."
+      }).success
+    ).toBe(false);
   });
 });
 

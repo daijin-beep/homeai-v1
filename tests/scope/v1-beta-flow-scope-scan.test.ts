@@ -34,13 +34,13 @@ const forbiddenCodePoints = new Set([
 ]);
 
 const batch18RawGuardFiles = [
-  { path: "apps/web/app/beta/page.tsx", expectedLfBytes: 7, minLfBytes: 5 },
-  { path: "apps/web/app/page.tsx", expectedLfBytes: 54, minLfBytes: 30 },
-  { path: "apps/web/components/v1-beta-flow/V1BetaFlowShell.tsx", expectedLfBytes: 348, minLfBytes: 250 },
-  { path: "packages/contracts/src/index.ts", expectedLfBytes: 40, minLfBytes: 25 },
-  { path: "packages/contracts/src/v1-beta-flow.ts", expectedLfBytes: 115, minLfBytes: 80 },
-  { path: "tests/contracts/v1-beta-flow-contracts.test.ts", expectedLfBytes: 134, minLfBytes: 90 },
-  { path: "tests/frontend/v1-beta-flow-shell.test.tsx", expectedLfBytes: 46, minLfBytes: 30 },
+  { path: "apps/web/app/beta/page.tsx", expectedLfBytes: 10, minLfBytes: 5 },
+  { path: "apps/web/app/page.tsx", expectedLfBytes: 56, minLfBytes: 30 },
+  { path: "apps/web/components/v1-beta-flow/V1BetaFlowShell.tsx", expectedLfBytes: 355, minLfBytes: 250 },
+  { path: "packages/contracts/src/index.ts", expectedLfBytes: 41, minLfBytes: 25 },
+  { path: "packages/contracts/src/v1-beta-flow.ts", expectedLfBytes: 118, minLfBytes: 80 },
+  { path: "tests/contracts/v1-beta-flow-contracts.test.ts", expectedLfBytes: 140, minLfBytes: 90 },
+  { path: "tests/frontend/v1-beta-flow-shell.test.tsx", expectedLfBytes: 49, minLfBytes: 30 },
   { path: "tests/scope/v1-beta-flow-scope-scan.test.ts", expectedLfBytes: 173, minLfBytes: 120 }
 ];
 
