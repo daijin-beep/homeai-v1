@@ -1,0 +1,7 @@
+{
+  "creativeRenderSpecStatus": "frozen",
+  "galleryAdmissionPolicyStatus": "pending",
+  "providerPolicyStatus": "pending",
+  "realProviderAllowed": false,
+  "mockProviderAllowed": true
+}
