@@ -15,13 +15,16 @@ import {
 
 export interface V1BetaEventRepository {
   record(event: V1BetaEvent): V1BetaEvent;
-  recordMany(request: V1BetaEventIntakeRequest): V1BetaEventIntakeResponse;
+  recordMany(
+    request: V1BetaEventIntakeRequest,
+  ): V1BetaEventIntakeResponse;
   list(): V1BetaEvent[];
   summarize(): V1BetaEventSummary;
   clear(): void;
 }
 
-export const v1BetaEventFixtureTimestamp = "2026-05-16T00:00:00.000Z";
+export const v1BetaEventFixtureTimestamp =
+  "2026-05-16T00:00:00.000Z";
 export const v1BetaEventFixtureGeometryHash = `sha256:${"8".repeat(64)}`;
 
 export function createInMemoryV1BetaEventRepository(
@@ -36,7 +39,9 @@ export function createInMemoryV1BetaEventRepository(
       return clone(parsed);
     },
     recordMany(request) {
-      const parsed = V1BetaEventIntakeRequestSchema.parse(clone(request));
+      const parsed = V1BetaEventIntakeRequestSchema.parse(
+        clone(request),
+      );
       for (const event of parsed.events) {
         repository.record(event);
       }
@@ -81,7 +86,9 @@ export function summarizeV1BetaEvents(
   const eventTypes = Object.fromEntries(
     V1BetaEventTypeSchema.options.map((eventType) => [
       eventType,
-      parsedEvents.filter((event) => event.eventType === eventType).length,
+      parsedEvents.filter(
+        (event) => event.eventType === eventType,
+      ).length,
     ]),
   ) as Record<V1BetaEventType, number>;
 

@@ -10,15 +10,22 @@ export default function V1BetaEventsDebugPage() {
   const debug = buildV1BetaEventDebugFixture();
 
   return (
-    <main data-testid="v1-beta-events-debug-page" style={shellStyle}>
+    <main
+      data-testid="v1-beta-events-debug-page"
+      style={shellStyle}
+    >
       <section style={panelStyle}>
         <p style={eyebrowStyle}>Local analytics</p>
         <h1 style={titleStyle}>V1 Beta events debug</h1>
         <p style={mutedStyle}>
-          Deterministic event fixture and local repository shape.
+          Deterministic event fixture and local repository
+          shape.
         </p>
       </section>
-      <section data-testid="v1-beta-events-summary" style={panelStyle}>
+      <section
+        data-testid="v1-beta-events-summary"
+        style={panelStyle}
+      >
         <h2 style={sectionTitleStyle}>Summary</h2>
         <dl style={gridStyle}>
           <dt>Total events</dt>
@@ -26,14 +33,24 @@ export default function V1BetaEventsDebugPage() {
           <dt>Unique sessions</dt>
           <dd>{debug.summary.uniqueSessions}</dd>
           <dt>Flow viewed</dt>
-          <dd>{debug.summary.eventTypes.beta_flow_viewed}</dd>
+          <dd>
+            {debug.summary.eventTypes.beta_flow_viewed}
+          </dd>
           <dt>Render room opened</dt>
-          <dd>{debug.summary.eventTypes.render_room_status_opened}</dd>
+          <dd>
+            {
+              debug.summary.eventTypes
+                .render_room_status_opened
+            }
+          </dd>
         </dl>
       </section>
       <section style={panelStyle}>
         <h2 style={sectionTitleStyle}>Events</h2>
-        <table data-testid="v1-beta-events-table" style={tableStyle}>
+        <table
+          data-testid="v1-beta-events-table"
+          style={tableStyle}
+        >
           <thead>
             <tr>
               <th>eventId</th>
@@ -53,7 +70,9 @@ export default function V1BetaEventsDebugPage() {
       </section>
       <section style={panelStyle}>
         <h2 style={sectionTitleStyle}>Debug JSON</h2>
-        <pre style={jsonStyle}>{JSON.stringify(debug, null, 2)}</pre>
+        <pre style={jsonStyle}>
+          {JSON.stringify(debug, null, 2)}
+        </pre>
       </section>
     </main>
   );

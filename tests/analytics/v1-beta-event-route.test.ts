@@ -7,7 +7,8 @@ import {
 import { createV1BetaEventFixture } from "@homeai/analytics";
 
 const originalNodeEnv = process.env.NODE_ENV;
-const originalEnableDevRoutes = process.env.ENABLE_DEV_ROUTES;
+const originalEnableDevRoutes =
+  process.env.ENABLE_DEV_ROUTES;
 
 describe("V1 Beta event dev route", () => {
   afterEach(() => {
@@ -45,7 +46,9 @@ describe("V1 Beta event dev route", () => {
     expect(body.ok).toBe(true);
     expect(body.acceptedCount).toBe(1);
     expect(body.totalStored).toBe(5);
-    expect(body.summary.eventTypes.beta_stage_viewed).toBe(2);
+    expect(body.summary.eventTypes.beta_stage_viewed).toBe(
+      2,
+    );
   });
 
   it("rejects invalid intake payloads", async () => {
@@ -68,19 +71,25 @@ describe("V1 Beta event dev route", () => {
 });
 
 function request(body: unknown): Request {
-  return new Request("http://localhost/api/dev/v1-beta-events", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  return new Request(
+    "http://localhost/api/dev/v1-beta-events",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 function invalidJsonRequest(): Request {
-  return new Request("http://localhost/api/dev/v1-beta-events", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: "{",
-  });
+  return new Request(
+    "http://localhost/api/dev/v1-beta-events",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    },
+  );
 }
 
 function restoreEnv(): void {

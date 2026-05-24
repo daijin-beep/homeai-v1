@@ -34,8 +34,11 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const parsed = V1BetaEventIntakeRequestSchema.parse(body);
-    return Response.json(getRepository().recordMany(parsed));
+    const parsed =
+      V1BetaEventIntakeRequestSchema.parse(body);
+    return Response.json(
+      getRepository().recordMany(parsed),
+    );
   } catch (error) {
     return Response.json(
       {
@@ -71,5 +74,8 @@ function isDevRouteDisabled(): boolean {
 }
 
 function notFoundResponse(): Response {
-  return Response.json({ ok: false, error: "Not found" }, { status: 404 });
+  return Response.json(
+    { ok: false, error: "Not found" },
+    { status: 404 },
+  );
 }

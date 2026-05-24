@@ -7,28 +7,37 @@ import {
 
 describe("V1 Beta event repository", () => {
   it("records validated events and summarizes by type", () => {
-    const repository = createInMemoryV1BetaEventRepository();
+    const repository =
+      createInMemoryV1BetaEventRepository();
     const event = createV1BetaEventFixture();
-    const response = repository.recordMany({ events: [event] });
+    const response = repository.recordMany({
+      events: [event],
+    });
 
     expect(response.acceptedCount).toBe(1);
     expect(response.totalStored).toBe(1);
     expect(response.summary.totalEvents).toBe(1);
-    expect(response.summary.eventTypes.beta_flow_viewed).toBe(1);
+    expect(
+      response.summary.eventTypes.beta_flow_viewed,
+    ).toBe(1);
   });
 
   it("deduplicates events by eventId while preserving deterministic ordering", () => {
-    const repository = createInMemoryV1BetaEventRepository();
+    const repository =
+      createInMemoryV1BetaEventRepository();
     const event = createV1BetaEventFixture();
 
     repository.recordMany({ events: [event, event] });
 
     expect(repository.list()).toHaveLength(1);
-    expect(repository.list()[0]?.eventId).toBe(event.eventId);
+    expect(repository.list()[0]?.eventId).toBe(
+      event.eventId,
+    );
   });
 
   it("rejects PII metadata through shared contract validation", () => {
-    const repository = createInMemoryV1BetaEventRepository();
+    const repository =
+      createInMemoryV1BetaEventRepository();
 
     expect(() =>
       repository.record(
@@ -47,6 +56,8 @@ describe("V1 Beta event repository", () => {
     expect(debug.ok).toBe(true);
     expect(debug.events.length).toBe(4);
     expect(debug.summary.totalEvents).toBe(4);
-    expect(debug.summary.eventTypes.render_room_status_opened).toBe(1);
+    expect(
+      debug.summary.eventTypes.render_room_status_opened,
+    ).toBe(1);
   });
 });

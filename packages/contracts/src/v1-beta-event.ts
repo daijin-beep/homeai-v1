@@ -57,7 +57,8 @@ export const V1BetaEventSchema = z
     ) {
       ctx.addIssue({
         code: "custom",
-        message: "render_room_status_opened requires roomId",
+        message:
+          "render_room_status_opened requires roomId",
         path: ["roomId"],
       });
     }
@@ -67,7 +68,10 @@ export const V1BetaEventSummarySchema = z
   .object({
     totalEvents: z.number().int().nonnegative(),
     uniqueSessions: z.number().int().nonnegative(),
-    eventTypes: z.record(V1BetaEventTypeSchema, z.number().int().nonnegative()),
+    eventTypes: z.record(
+      V1BetaEventTypeSchema,
+      z.number().int().nonnegative(),
+    ),
   })
   .strict();
 
@@ -95,10 +99,16 @@ export const V1BetaEventDebugPayloadSchema = z
   })
   .strict();
 
-export type V1BetaEventType = z.infer<typeof V1BetaEventTypeSchema>;
-export type V1BetaEventSource = z.infer<typeof V1BetaEventSourceSchema>;
+export type V1BetaEventType = z.infer<
+  typeof V1BetaEventTypeSchema
+>;
+export type V1BetaEventSource = z.infer<
+  typeof V1BetaEventSourceSchema
+>;
 export type V1BetaEvent = z.infer<typeof V1BetaEventSchema>;
-export type V1BetaEventSummary = z.infer<typeof V1BetaEventSummarySchema>;
+export type V1BetaEventSummary = z.infer<
+  typeof V1BetaEventSummarySchema
+>;
 export type V1BetaEventIntakeRequest = z.infer<
   typeof V1BetaEventIntakeRequestSchema
 >;

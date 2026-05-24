@@ -14,7 +14,9 @@ describe("V1 Beta event contracts", () => {
   it("validates a beta flow event with geometry trace", () => {
     const event = createEvent();
 
-    expect(V1BetaEventSchema.safeParse(event).success).toBe(true);
+    expect(V1BetaEventSchema.safeParse(event).success).toBe(
+      true,
+    );
     expect(event.geometryHash).toBe(geometryHash);
   });
 
@@ -81,10 +83,13 @@ describe("V1 Beta event contracts", () => {
       },
     };
 
-    expect(V1BetaEventIntakeRequestSchema.safeParse({ events }).success).toBe(
-      true,
-    );
-    expect(V1BetaEventSummarySchema.safeParse(summary).success).toBe(true);
+    expect(
+      V1BetaEventIntakeRequestSchema.safeParse({ events })
+        .success,
+    ).toBe(true);
+    expect(
+      V1BetaEventSummarySchema.safeParse(summary).success,
+    ).toBe(true);
     expect(
       V1BetaEventDebugPayloadSchema.safeParse({
         ok: true,
@@ -96,11 +101,17 @@ describe("V1 Beta event contracts", () => {
   });
 });
 
-function createEvent(overrides: Partial<V1BetaEvent> = {}): V1BetaEvent {
-  return V1BetaEventSchema.parse(createEventInput(overrides));
+function createEvent(
+  overrides: Partial<V1BetaEvent> = {},
+): V1BetaEvent {
+  return V1BetaEventSchema.parse(
+    createEventInput(overrides),
+  );
 }
 
-function createEventInput(overrides: Partial<V1BetaEvent> = {}) {
+function createEventInput(
+  overrides: Partial<V1BetaEvent> = {},
+) {
   return {
     eventId: "event-flow-viewed",
     eventType: "beta_flow_viewed",
