@@ -70,7 +70,7 @@ const batch19RawGuardFiles = [
     path: "tests/scope/v1-beta-events-scope-scan.test.ts",
     expectedLfBytes: 242,
   },
-  { path: "vitest.config.ts", expectedLfBytes: 80 },
+  { path: "vitest.config.ts", expectedLfBytes: 81 },
 ];
 
 describe("V1 Beta events scope scan", () => {
