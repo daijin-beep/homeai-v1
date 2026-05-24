@@ -11,7 +11,7 @@ export const V1BetaEventTypeSchema = z.enum([
   "render_status_viewed",
   "render_room_status_opened",
   "decor_matching_locked_viewed",
-  "conversion_intent_locked_viewed"
+  "conversion_intent_locked_viewed",
 ]);
 
 export const V1BetaEventSourceSchema = z.enum([
@@ -19,7 +19,7 @@ export const V1BetaEventSourceSchema = z.enum([
   "scheme_page_shell",
   "render_status_shell",
   "dev_intake",
-  "fixture"
+  "fixture",
 ]);
 
 export const V1BetaEventSchema = z
@@ -37,22 +37,28 @@ export const V1BetaEventSchema = z
     roomId: IdSchema.optional(),
     renderCandidateId: IdSchema.optional(),
     metadata: LeadEventMetadataSchema.optional(),
-    createdAt: TimestampSchema
+    createdAt: TimestampSchema,
   })
   .strict()
   .superRefine((event, ctx) => {
-    if (event.eventType === "beta_stage_viewed" && event.stageId === undefined) {
+    if (
+      event.eventType === "beta_stage_viewed" &&
+      event.stageId === undefined
+    ) {
       ctx.addIssue({
         code: "custom",
         message: "beta_stage_viewed requires stageId",
-        path: ["stageId"]
+        path: ["stageId"],
       });
     }
-    if (event.eventType === "render_room_status_opened" && event.roomId === undefined) {
+    if (
+      event.eventType === "render_room_status_opened" &&
+      event.roomId === undefined
+    ) {
       ctx.addIssue({
         code: "custom",
         message: "render_room_status_opened requires roomId",
-        path: ["roomId"]
+        path: ["roomId"],
       });
     }
   });
@@ -61,13 +67,13 @@ export const V1BetaEventSummarySchema = z
   .object({
     totalEvents: z.number().int().nonnegative(),
     uniqueSessions: z.number().int().nonnegative(),
-    eventTypes: z.record(V1BetaEventTypeSchema, z.number().int().nonnegative())
+    eventTypes: z.record(V1BetaEventTypeSchema, z.number().int().nonnegative()),
   })
   .strict();
 
 export const V1BetaEventIntakeRequestSchema = z
   .object({
-    events: z.array(V1BetaEventSchema).min(1).max(50)
+    events: z.array(V1BetaEventSchema).min(1).max(50),
   })
   .strict();
 
@@ -76,7 +82,7 @@ export const V1BetaEventIntakeResponseSchema = z
     ok: z.literal(true),
     acceptedCount: z.number().int().nonnegative(),
     totalStored: z.number().int().nonnegative(),
-    summary: V1BetaEventSummarySchema
+    summary: V1BetaEventSummarySchema,
   })
   .strict();
 
@@ -85,7 +91,7 @@ export const V1BetaEventDebugPayloadSchema = z
     ok: z.literal(true),
     events: z.array(V1BetaEventSchema),
     summary: V1BetaEventSummarySchema,
-    generatedAt: TimestampSchema
+    generatedAt: TimestampSchema,
   })
   .strict();
 
@@ -93,6 +99,12 @@ export type V1BetaEventType = z.infer<typeof V1BetaEventTypeSchema>;
 export type V1BetaEventSource = z.infer<typeof V1BetaEventSourceSchema>;
 export type V1BetaEvent = z.infer<typeof V1BetaEventSchema>;
 export type V1BetaEventSummary = z.infer<typeof V1BetaEventSummarySchema>;
-export type V1BetaEventIntakeRequest = z.infer<typeof V1BetaEventIntakeRequestSchema>;
-export type V1BetaEventIntakeResponse = z.infer<typeof V1BetaEventIntakeResponseSchema>;
-export type V1BetaEventDebugPayload = z.infer<typeof V1BetaEventDebugPayloadSchema>;
+export type V1BetaEventIntakeRequest = z.infer<
+  typeof V1BetaEventIntakeRequestSchema
+>;
+export type V1BetaEventIntakeResponse = z.infer<
+  typeof V1BetaEventIntakeResponseSchema
+>;
+export type V1BetaEventDebugPayload = z.infer<
+  typeof V1BetaEventDebugPayloadSchema
+>;

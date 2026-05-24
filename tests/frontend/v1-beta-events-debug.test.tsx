@@ -14,8 +14,12 @@ describe("V1 Beta events debug page", () => {
     render(<V1BetaEventsDebugPage />);
 
     expect(screen.getByTestId("v1-beta-events-debug-page")).toBeInTheDocument();
-    expect(screen.getByTestId("v1-beta-events-summary")).toHaveTextContent("Total events");
+    expect(screen.getByTestId("v1-beta-events-summary")).toHaveTextContent(
+      "Total events",
+    );
     expect(screen.getByTestId("v1-beta-events-summary")).toHaveTextContent("4");
-    expect(screen.getByTestId("v1-beta-events-table")).toHaveTextContent("render_room_status_opened");
+    expect(screen.getByTestId("v1-beta-events-table")).toHaveTextContent(
+      "render_room_status_opened",
+    );
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildV1BetaEventDebugFixture,
   createInMemoryV1BetaEventRepository,
-  createV1BetaEventFixture
+  createV1BetaEventFixture,
 } from "@homeai/analytics";
 
 describe("V1 Beta event repository", () => {
@@ -30,11 +30,15 @@ describe("V1 Beta event repository", () => {
   it("rejects PII metadata through shared contract validation", () => {
     const repository = createInMemoryV1BetaEventRepository();
 
-    expect(() => repository.record(createV1BetaEventFixture({
-      metadata: {
-        phone: "123"
-      }
-    }))).toThrow(/metadata/i);
+    expect(() =>
+      repository.record(
+        createV1BetaEventFixture({
+          metadata: {
+            phone: "123",
+          },
+        }),
+      ),
+    ).toThrow(/metadata/i);
   });
 
   it("builds a deterministic debug fixture", () => {

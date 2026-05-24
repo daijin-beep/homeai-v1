@@ -14,7 +14,9 @@ export default function V1BetaEventsDebugPage() {
       <section style={panelStyle}>
         <p style={eyebrowStyle}>Local analytics</p>
         <h1 style={titleStyle}>V1 Beta events debug</h1>
-        <p style={mutedStyle}>Deterministic event fixture and local repository shape.</p>
+        <p style={mutedStyle}>
+          Deterministic event fixture and local repository shape.
+        </p>
       </section>
       <section data-testid="v1-beta-events-summary" style={panelStyle}>
         <h2 style={sectionTitleStyle}>Summary</h2>
@@ -71,7 +73,10 @@ function EventRow({ event }: { event: V1BetaEvent }) {
 }
 
 function isDevPageDisabledInProduction(): boolean {
-  return process.env.NODE_ENV === "production" && process.env.ENABLE_DEV_ROUTES !== "true";
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.ENABLE_DEV_ROUTES !== "true"
+  );
 }
 
 const shellStyle = {
@@ -80,7 +85,7 @@ const shellStyle = {
   padding: 24,
   fontFamily: "Arial, sans-serif",
   color: "#202124",
-  background: "#f8fafc"
+  background: "#f8fafc",
 };
 
 const panelStyle = {
@@ -89,46 +94,46 @@ const panelStyle = {
   border: "1px solid #d9dee5",
   borderRadius: 8,
   padding: 16,
-  background: "#fff"
+  background: "#fff",
 };
 
 const titleStyle = {
   margin: "4px 0",
-  fontSize: 28
+  fontSize: 28,
 };
 
 const sectionTitleStyle = {
   margin: 0,
-  fontSize: 16
+  fontSize: 16,
 };
 
 const eyebrowStyle = {
   margin: 0,
   fontSize: 12,
   textTransform: "uppercase" as const,
-  color: "#667085"
+  color: "#667085",
 };
 
 const mutedStyle = {
   margin: 0,
-  color: "#5f6368"
+  color: "#5f6368",
 };
 
 const gridStyle = {
   display: "grid",
   gridTemplateColumns: "max-content 1fr",
   gap: "6px 12px",
-  margin: 0
+  margin: 0,
 };
 
 const tableStyle = {
   width: "100%",
-  borderCollapse: "collapse" as const
+  borderCollapse: "collapse" as const,
 };
 
 const jsonStyle = {
   maxHeight: 360,
   overflow: "auto",
   padding: 12,
-  background: "#f6f7f8"
+  background: "#f6f7f8",
 };

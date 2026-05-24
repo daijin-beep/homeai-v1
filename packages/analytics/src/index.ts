@@ -10,7 +10,7 @@ import {
   type V1BetaEventIntakeRequest,
   type V1BetaEventIntakeResponse,
   type V1BetaEventSummary,
-  type V1BetaEventType
+  type V1BetaEventType,
 } from "@homeai/contracts";
 
 export interface V1BetaEventRepository {
@@ -25,7 +25,7 @@ export const v1BetaEventFixtureTimestamp = "2026-05-16T00:00:00.000Z";
 export const v1BetaEventFixtureGeometryHash = `sha256:${"8".repeat(64)}`;
 
 export function createInMemoryV1BetaEventRepository(
-  initialEvents: readonly V1BetaEvent[] = []
+  initialEvents: readonly V1BetaEvent[] = [],
 ): V1BetaEventRepository {
   const eventsById = new Map<string, V1BetaEvent>();
 
@@ -46,12 +46,16 @@ export function createInMemoryV1BetaEventRepository(
         ok: true,
         acceptedCount: parsed.events.length,
         totalStored: eventsById.size,
-        summary
+        summary,
       });
     },
     list() {
       return [...eventsById.values()]
-        .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.eventId.localeCompare(right.eventId))
+        .sort(
+          (left, right) =>
+            left.createdAt.localeCompare(right.createdAt) ||
+            left.eventId.localeCompare(right.eventId),
+        )
         .map((event) => clone(event));
     },
     summarize() {
@@ -59,7 +63,7 @@ export function createInMemoryV1BetaEventRepository(
     },
     clear() {
       eventsById.clear();
-    }
+    },
   };
 
   if (initialEvents.length > 0) {
@@ -68,24 +72,30 @@ export function createInMemoryV1BetaEventRepository(
   return repository;
 }
 
-export function summarizeV1BetaEvents(events: readonly V1BetaEvent[]): V1BetaEventSummary {
-  const parsedEvents = events.map((event) => V1BetaEventSchema.parse(clone(event)));
+export function summarizeV1BetaEvents(
+  events: readonly V1BetaEvent[],
+): V1BetaEventSummary {
+  const parsedEvents = events.map((event) =>
+    V1BetaEventSchema.parse(clone(event)),
+  );
   const eventTypes = Object.fromEntries(
     V1BetaEventTypeSchema.options.map((eventType) => [
       eventType,
-      parsedEvents.filter((event) => event.eventType === eventType).length
-    ])
+      parsedEvents.filter((event) => event.eventType === eventType).length,
+    ]),
   ) as Record<V1BetaEventType, number>;
 
   return V1BetaEventSummarySchema.parse({
     totalEvents: parsedEvents.length,
-    uniqueSessions: new Set(parsedEvents.map((event) => event.anonymousSessionId)).size,
-    eventTypes
+    uniqueSessions: new Set(
+      parsedEvents.map((event) => event.anonymousSessionId),
+    ).size,
+    eventTypes,
   });
 }
 
 export function createV1BetaEventFixture(
-  overrides: Partial<V1BetaEvent> = {}
+  overrides: Partial<V1BetaEvent> = {},
 ): V1BetaEvent {
   return V1BetaEventSchema.parse({
     eventId: "v1-beta-event-flow-viewed",
@@ -98,10 +108,10 @@ export function createV1BetaEventFixture(
     sceneContractId: "scene-beta-flow-fixture",
     geometryHash: v1BetaEventFixtureGeometryHash,
     metadata: {
-      surface: "beta-flow"
+      surface: "beta-flow",
     },
     createdAt: v1BetaEventFixtureTimestamp,
-    ...overrides
+    ...overrides,
   });
 }
 
@@ -113,13 +123,13 @@ export function buildV1BetaEventDebugFixture(): V1BetaEventDebugPayload {
       eventType: "beta_stage_viewed",
       stageId: "render_review",
       source: "v1_beta_flow_shell",
-      createdAt: "2026-05-16T00:00:01.000Z"
+      createdAt: "2026-05-16T00:00:01.000Z",
     }),
     createV1BetaEventFixture({
       eventId: "v1-beta-event-scheme-viewed",
       eventType: "scheme_page_viewed",
       source: "scheme_page_shell",
-      createdAt: "2026-05-16T00:00:02.000Z"
+      createdAt: "2026-05-16T00:00:02.000Z",
     }),
     createV1BetaEventFixture({
       eventId: "v1-beta-event-render-room-opened",
@@ -127,15 +137,15 @@ export function buildV1BetaEventDebugFixture(): V1BetaEventDebugPayload {
       source: "render_status_shell",
       stageId: "render_review",
       roomId: "room-living",
-      createdAt: "2026-05-16T00:00:03.000Z"
-    })
+      createdAt: "2026-05-16T00:00:03.000Z",
+    }),
   ]);
 
   return V1BetaEventDebugPayloadSchema.parse({
     ok: true,
     events: repository.list(),
     summary: repository.summarize(),
-    generatedAt: v1BetaEventFixtureTimestamp
+    generatedAt: v1BetaEventFixtureTimestamp,
   });
 }
 

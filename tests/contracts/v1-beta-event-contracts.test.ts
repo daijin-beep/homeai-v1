@@ -4,7 +4,7 @@ import {
   V1BetaEventIntakeRequestSchema,
   V1BetaEventSchema,
   V1BetaEventSummarySchema,
-  type V1BetaEvent
+  type V1BetaEvent,
 } from "@homeai/contracts";
 
 const timestamp = "2026-05-16T00:00:00.000Z";
@@ -19,27 +19,43 @@ describe("V1 Beta event contracts", () => {
   });
 
   it("requires stageId and roomId for stage and room-specific events", () => {
-    expect(V1BetaEventSchema.safeParse(createEventInput({
-      eventId: "event-stage",
-      eventType: "beta_stage_viewed",
-      stageId: "render_review"
-    })).success).toBe(true);
-    expect(V1BetaEventSchema.safeParse(createEventInput({
-      eventId: "event-stage-missing",
-      eventType: "beta_stage_viewed"
-    })).success).toBe(false);
-    expect(V1BetaEventSchema.safeParse(createEventInput({
-      eventId: "event-room-missing",
-      eventType: "render_room_status_opened"
-    })).success).toBe(false);
+    expect(
+      V1BetaEventSchema.safeParse(
+        createEventInput({
+          eventId: "event-stage",
+          eventType: "beta_stage_viewed",
+          stageId: "render_review",
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      V1BetaEventSchema.safeParse(
+        createEventInput({
+          eventId: "event-stage-missing",
+          eventType: "beta_stage_viewed",
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      V1BetaEventSchema.safeParse(
+        createEventInput({
+          eventId: "event-room-missing",
+          eventType: "render_room_status_opened",
+        }),
+      ).success,
+    ).toBe(false);
   });
 
   it("rejects unnecessary PII metadata", () => {
-    expect(V1BetaEventSchema.safeParse(createEventInput({
-      metadata: {
-        email: "person@example.com"
-      }
-    })).success).toBe(false);
+    expect(
+      V1BetaEventSchema.safeParse(
+        createEventInput({
+          metadata: {
+            email: "person@example.com",
+          },
+        }),
+      ).success,
+    ).toBe(false);
   });
 
   it("validates intake and debug response payloads", () => {
@@ -48,8 +64,8 @@ describe("V1 Beta event contracts", () => {
       createEvent({
         eventId: "event-render-status",
         eventType: "render_status_viewed",
-        source: "render_status_shell"
-      })
+        source: "render_status_shell",
+      }),
     ];
     const summary = {
       totalEvents: 2,
@@ -61,18 +77,22 @@ describe("V1 Beta event contracts", () => {
         render_status_viewed: 1,
         render_room_status_opened: 0,
         decor_matching_locked_viewed: 0,
-        conversion_intent_locked_viewed: 0
-      }
+        conversion_intent_locked_viewed: 0,
+      },
     };
 
-    expect(V1BetaEventIntakeRequestSchema.safeParse({ events }).success).toBe(true);
+    expect(V1BetaEventIntakeRequestSchema.safeParse({ events }).success).toBe(
+      true,
+    );
     expect(V1BetaEventSummarySchema.safeParse(summary).success).toBe(true);
-    expect(V1BetaEventDebugPayloadSchema.safeParse({
-      ok: true,
-      events,
-      summary,
-      generatedAt: timestamp
-    }).success).toBe(true);
+    expect(
+      V1BetaEventDebugPayloadSchema.safeParse({
+        ok: true,
+        events,
+        summary,
+        generatedAt: timestamp,
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -92,9 +112,9 @@ function createEventInput(overrides: Partial<V1BetaEvent> = {}) {
     sceneContractId: "scene-v1-beta",
     geometryHash,
     metadata: {
-      surface: "beta-flow"
+      surface: "beta-flow",
     },
     createdAt: timestamp,
-    ...overrides
+    ...overrides,
   };
 }

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   GET,
   POST,
-  resetV1BetaEventDevRepositoryForTests
+  resetV1BetaEventDevRepositoryForTests,
 } from "../../apps/web/app/api/dev/v1-beta-events/route.js";
 import { createV1BetaEventFixture } from "@homeai/analytics";
 
@@ -27,16 +27,18 @@ describe("V1 Beta event dev route", () => {
 
   it("accepts local intake events and updates repository summary", async () => {
     process.env.NODE_ENV = "test";
-    const response = await POST(request({
-      events: [
-        createV1BetaEventFixture({
-          eventId: "event-route-stage-viewed",
-          eventType: "beta_stage_viewed",
-          stageId: "render_review",
-          source: "dev_intake"
-        })
-      ]
-    }));
+    const response = await POST(
+      request({
+        events: [
+          createV1BetaEventFixture({
+            eventId: "event-route-stage-viewed",
+            eventType: "beta_stage_viewed",
+            stageId: "render_review",
+            source: "dev_intake",
+          }),
+        ],
+      }),
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -69,7 +71,7 @@ function request(body: unknown): Request {
   return new Request("http://localhost/api/dev/v1-beta-events", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 
@@ -77,7 +79,7 @@ function invalidJsonRequest(): Request {
   return new Request("http://localhost/api/dev/v1-beta-events", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: "{"
+    body: "{",
   });
 }
 
