@@ -11,6 +11,10 @@ import {
 
 const generatedAt = "2026-05-20T00:00:00.000Z";
 
+function draftRevisionIdForHome(homeId: string): string {
+  return `draft-api-${homeId}`;
+}
+
 const guardrails: V1BetaUserBackendGuardrails = {
   mockOnly: true,
   dbPersistenceEnabled: false,
@@ -35,8 +39,8 @@ export function buildUserBetaBootstrap(
       bootstrap: `/api/beta/${homeId}/bootstrap`,
       uploadFloorplan: `/api/beta/${homeId}/floorplan/upload`,
       p1Session: `/api/p1/${homeId}/session`,
-      p1DraftViewModel: `/api/p1/drafts/${flow.trace.draftRevisionId}/view-model`,
-      p1Confirm: `/api/p1/drafts/${flow.trace.draftRevisionId}/confirm`,
+      p1DraftViewModel: "/api/p1/drafts/{draftRevisionId}",
+      p1Confirm: "/api/p1/drafts/{draftRevisionId}/confirm",
     },
     generatedAt,
   });
@@ -67,7 +71,6 @@ export async function handleUserBetaUpload(
 export function buildP1UserFlowViewModel(
   homeId: string,
 ): P1UserFlowViewModel {
-  const draftRevisionId = `draft-user-beta-${homeId}`;
   return P1UserFlowViewModelSchema.parse({
     version: "0.1",
     source: "mock_contract_shell",
@@ -75,7 +78,6 @@ export function buildP1UserFlowViewModel(
       homeId,
       assetId: `asset-user-beta-${homeId}`,
       parseJobId: `parse-user-beta-${homeId}`,
-      draftRevisionId,
     },
     currentState: "draft_ready",
     userVisibleStage: "space_confirmation",
@@ -91,13 +93,6 @@ export function buildP1UserFlowViewModel(
         label: "Review floorplan",
         method: "POST",
         href: `/api/p1/${homeId}/session`,
-        enabled: true,
-      },
-      {
-        actionId: "confirm_space_truth",
-        label: "Confirm Space Truth",
-        method: "POST",
-        href: `/api/p1/drafts/${draftRevisionId}/confirm`,
         enabled: true,
       },
     ],
@@ -121,7 +116,7 @@ export function buildUploadFloorplanResponse(
 ): UploadFloorplanResponse {
   const assetId = `asset-user-beta-${homeId}`;
   const parseJobId = `parse-user-beta-${homeId}`;
-  const draftRevisionId = `draft-user-beta-${homeId}`;
+  const draftRevisionId = draftRevisionIdForHome(homeId);
   return UploadFloorplanResponseSchema.parse({
     ok: true,
     version: "0.1",
