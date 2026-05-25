@@ -43,7 +43,7 @@ const batch19RawGuardFiles = [
   },
   {
     path: "packages/contracts/src/index.ts",
-    expectedLfBytes: 41,
+    expectedLfBytes: 42,
   },
   {
     path: "packages/contracts/src/v1-beta-event.ts",
