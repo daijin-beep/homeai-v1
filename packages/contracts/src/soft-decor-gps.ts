@@ -9,23 +9,24 @@ import {
 import { BudgetBandSchema } from "./design-brief.js";
 import { RoomTypeSchema } from "./floorplan.js";
 
-export const ProductCategorySchema = z.enum([
-  "sofa",
-  "coffee_table",
-  "tv_cabinet",
-  "dining_table",
-  "dining_chair",
-  "bed",
-  "wardrobe",
-  "desk",
-  "chair",
-  "curtain",
-  "rug",
-  "lamp",
-  "storage_cabinet",
-  "mirror",
-  "decor",
-]);
+export const ProductCategorySchema =
+  z.enum([
+    "sofa",
+    "coffee_table",
+    "tv_cabinet",
+    "dining_table",
+    "dining_chair",
+    "bed",
+    "wardrobe",
+    "desk",
+    "chair",
+    "curtain",
+    "rug",
+    "lamp",
+    "storage_cabinet",
+    "mirror",
+    "decor",
+  ]);
 
 export const ProductCandidateSchema = z
   .object({
@@ -64,18 +65,35 @@ export const RawSkuFixtureSchema = z
     source: z.literal("local_fixture"),
     category: ProductCategorySchema,
     title: z.string().min(1),
-    imageUri: z.string().min(1).optional(),
-    leadUri: z.string().min(1).optional(),
+    imageUri: z
+      .string()
+      .min(1)
+      .optional(),
+    leadUri: z
+      .string()
+      .min(1)
+      .optional(),
     price: PriceSchema.optional(),
     size: z
       .object({
-        widthMm: z.number().positive().optional(),
-        depthMm: z.number().positive().optional(),
-        heightMm: z.number().positive().optional(),
+        widthMm: z
+          .number()
+          .positive()
+          .optional(),
+        depthMm: z
+          .number()
+          .positive()
+          .optional(),
+        heightMm: z
+          .number()
+          .positive()
+          .optional(),
       })
       .strict()
       .optional(),
-    styleTags: z.array(z.string().min(1)),
+    styleTags: z.array(
+      z.string().min(1),
+    ),
     budgetBand: BudgetBandSchema,
     availability: z.enum([
       "available",
@@ -96,14 +114,22 @@ export const VerifiedSkuSchema = z
     leadUri: z.string().min(1),
     price: PriceSchema,
     size: VerifiedSkuSizeSchema,
-    styleTags: z.array(z.string().min(1)),
+    styleTags: z.array(
+      z.string().min(1),
+    ),
     budgetBand: BudgetBandSchema,
-    availability: z.literal("available"),
+    availability: z.literal(
+      "available",
+    ),
     admittedAt: TimestampSchema,
   })
   .strict()
   .superRefine((sku, ctx) => {
-    if (!sku.imageUri.startsWith("fixture://")) {
+    if (
+      !sku.imageUri.startsWith(
+        "fixture://",
+      )
+    ) {
       ctx.addIssue({
         code: "custom",
         message:
@@ -111,7 +137,11 @@ export const VerifiedSkuSchema = z
         path: ["imageUri"],
       });
     }
-    if (!sku.leadUri.startsWith("fixture://")) {
+    if (
+      !sku.leadUri.startsWith(
+        "fixture://",
+      )
+    ) {
       ctx.addIssue({
         code: "custom",
         message:
@@ -145,91 +175,123 @@ export const SkuAdmissionIssueSchema = z
   })
   .strict();
 
-export const VerifiedSkuAdmissionResultSchema = z
-  .object({
-    rawSkuId: IdSchema,
-    status: z.enum(["admitted", "rejected"]),
-    sku: VerifiedSkuSchema.optional(),
-    issues: z.array(SkuAdmissionIssueSchema),
-    checkedAt: TimestampSchema,
-  })
-  .strict()
-  .superRefine((result, ctx) => {
-    if (
-      result.status === "admitted" &&
-      result.sku === undefined
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "admitted SKU requires sku",
-        path: ["sku"],
-      });
-    }
-    if (
-      result.status === "rejected" &&
-      result.issues.length === 0
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "rejected SKU requires issues",
-        path: ["issues"],
-      });
-    }
-    if (
-      result.status === "admitted" &&
-      result.issues.length > 0
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message:
-          "admitted SKU must not carry blocking issues",
-        path: ["issues"],
-      });
-    }
-  });
+export const VerifiedSkuAdmissionResultSchema =
+  z
+    .object({
+      rawSkuId: IdSchema,
+      status: z.enum([
+        "admitted",
+        "rejected",
+      ]),
+      sku: VerifiedSkuSchema.optional(),
+      issues: z.array(
+        SkuAdmissionIssueSchema,
+      ),
+      checkedAt: TimestampSchema,
+    })
+    .strict()
+    .superRefine((result, ctx) => {
+      if (
+        result.status === "admitted" &&
+        result.sku === undefined
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "admitted SKU requires sku",
+          path: ["sku"],
+        });
+      }
+      if (
+        result.status === "rejected" &&
+        result.issues.length === 0
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "rejected SKU requires issues",
+          path: ["issues"],
+        });
+      }
+      if (
+        result.status === "admitted" &&
+        result.issues.length > 0
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "admitted SKU must not carry blocking issues",
+          path: ["issues"],
+        });
+      }
+    });
 
-export const VerifiedSkuCatalogSchema = z
-  .object({
-    source: z.literal("local_fixture"),
-    importedAt: TimestampSchema,
-    totalRawSkus: z.number().int().nonnegative(),
-    admittedCount: z.number().int().nonnegative(),
-    rejectedCount: z.number().int().nonnegative(),
-    results: z.array(VerifiedSkuAdmissionResultSchema),
-    verifiedSkus: z.array(VerifiedSkuSchema),
-  })
-  .strict()
-  .superRefine((catalog, ctx) => {
-    if (catalog.totalRawSkus !== catalog.results.length) {
-      ctx.addIssue({
-        code: "custom",
-        message: "totalRawSkus must match results",
-        path: ["totalRawSkus"],
-      });
-    }
-    if (
-      catalog.admittedCount !== catalog.verifiedSkus.length
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "admittedCount must match verifiedSkus",
-        path: ["admittedCount"],
-      });
-    }
-    if (
-      catalog.rejectedCount !==
-      catalog.results.filter(
-        (result) => result.status === "rejected",
-      ).length
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message:
-          "rejectedCount must match rejected results",
-        path: ["rejectedCount"],
-      });
-    }
-  });
+export const VerifiedSkuCatalogSchema =
+  z
+    .object({
+      source: z.literal(
+        "local_fixture",
+      ),
+      importedAt: TimestampSchema,
+      totalRawSkus: z
+        .number()
+        .int()
+        .nonnegative(),
+      admittedCount: z
+        .number()
+        .int()
+        .nonnegative(),
+      rejectedCount: z
+        .number()
+        .int()
+        .nonnegative(),
+      results: z.array(
+        VerifiedSkuAdmissionResultSchema,
+      ),
+      verifiedSkus: z.array(
+        VerifiedSkuSchema,
+      ),
+    })
+    .strict()
+    .superRefine((catalog, ctx) => {
+      if (
+        catalog.totalRawSkus !==
+        catalog.results.length
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "totalRawSkus must match results",
+          path: ["totalRawSkus"],
+        });
+      }
+      if (
+        catalog.admittedCount !==
+        catalog.verifiedSkus.length
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "admittedCount must match verifiedSkus",
+          path: ["admittedCount"],
+        });
+      }
+      if (
+        catalog.rejectedCount !==
+        catalog.results.filter(
+          (result) =>
+            result.status ===
+            "rejected",
+        ).length
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "rejectedCount must match rejected results",
+          path: ["rejectedCount"],
+        });
+      }
+    });
 
 export const PlacementAnchorSchema = z
   .object({
@@ -245,35 +307,46 @@ export const PlacementAnchorSchema = z
   })
   .strict();
 
-export const SoftDecorRecommendationSchema = z
-  .object({
-    id: IdSchema,
-    roomId: IdSchema,
-    category: ProductCategorySchema,
-    placementAnchor: PlacementAnchorSchema,
-    sizeConstraint: SizeMmSchema,
-    styleConstraints: z.array(z.string().min(1)),
-    budgetBand: BudgetBandSchema,
-    primaryCandidate: ProductCandidateSchema,
-    alternatives: z.array(ProductCandidateSchema),
-  })
-  .strict();
+export const SoftDecorRecommendationSchema =
+  z
+    .object({
+      id: IdSchema,
+      roomId: IdSchema,
+      category: ProductCategorySchema,
+      placementAnchor:
+        PlacementAnchorSchema,
+      sizeConstraint: SizeMmSchema,
+      styleConstraints: z.array(
+        z.string().min(1),
+      ),
+      budgetBand: BudgetBandSchema,
+      primaryCandidate:
+        ProductCandidateSchema,
+      alternatives: z.array(
+        ProductCandidateSchema,
+      ),
+    })
+    .strict();
 
-export const RoomSoftDecorGuideSchema = z
-  .object({
-    roomId: IdSchema,
-    roomType: RoomTypeSchema,
-    recommendations: z.array(SoftDecorRecommendationSchema),
-    warnings: z.array(z.string()),
-  })
-  .strict();
+export const RoomSoftDecorGuideSchema =
+  z
+    .object({
+      roomId: IdSchema,
+      roomType: RoomTypeSchema,
+      recommendations: z.array(
+        SoftDecorRecommendationSchema,
+      ),
+      warnings: z.array(z.string()),
+    })
+    .strict();
 
-export const SoftDecorGPSPlanStatusSchema = z.enum([
-  "queued",
-  "running",
-  "ready",
-  "failed",
-]);
+export const SoftDecorGPSPlanStatusSchema =
+  z.enum([
+    "queued",
+    "running",
+    "ready",
+    "failed",
+  ]);
 
 export const SoftDecorGPSPlanSchema = z
   .object({
@@ -282,8 +355,11 @@ export const SoftDecorGPSPlanSchema = z
     schemeId: IdSchema,
     sceneContractId: IdSchema,
     styleProfileId: IdSchema,
-    status: SoftDecorGPSPlanStatusSchema,
-    rooms: z.array(RoomSoftDecorGuideSchema),
+    status:
+      SoftDecorGPSPlanStatusSchema,
+    rooms: z.array(
+      RoomSoftDecorGuideSchema,
+    ),
     createdAt: TimestampSchema,
     updatedAt: TimestampSchema,
   })
@@ -301,22 +377,28 @@ export type VerifiedSkuSize = z.infer<
 export type RawSkuFixture = z.infer<
   typeof RawSkuFixtureSchema
 >;
-export type VerifiedSku = z.infer<typeof VerifiedSkuSchema>;
+export type VerifiedSku = z.infer<
+  typeof VerifiedSkuSchema
+>;
 export type SkuAdmissionIssue = z.infer<
   typeof SkuAdmissionIssueSchema
 >;
-export type VerifiedSkuAdmissionResult = z.infer<
-  typeof VerifiedSkuAdmissionResultSchema
->;
-export type VerifiedSkuCatalog = z.infer<
-  typeof VerifiedSkuCatalogSchema
->;
-export type SoftDecorRecommendation = z.infer<
-  typeof SoftDecorRecommendationSchema
->;
-export type RoomSoftDecorGuide = z.infer<
-  typeof RoomSoftDecorGuideSchema
->;
+export type VerifiedSkuAdmissionResult =
+  z.infer<
+    typeof VerifiedSkuAdmissionResultSchema
+  >;
+export type VerifiedSkuCatalog =
+  z.infer<
+    typeof VerifiedSkuCatalogSchema
+  >;
+export type SoftDecorRecommendation =
+  z.infer<
+    typeof SoftDecorRecommendationSchema
+  >;
+export type RoomSoftDecorGuide =
+  z.infer<
+    typeof RoomSoftDecorGuideSchema
+  >;
 export type SoftDecorGPSPlan = z.infer<
   typeof SoftDecorGPSPlanSchema
 >;

@@ -7,7 +7,8 @@ export default function VerifiedSkuDebugPage() {
     notFound();
   }
 
-  const catalog = buildVerifiedSkuDebugFixture();
+  const catalog =
+    buildVerifiedSkuDebugFixture();
 
   return (
     <main
@@ -15,29 +16,44 @@ export default function VerifiedSkuDebugPage() {
       style={shellStyle}
     >
       <section style={panelStyle}>
-        <p style={eyebrowStyle}>Local catalog</p>
-        <h1 style={titleStyle}>Verified SKU admission</h1>
+        <p style={eyebrowStyle}>
+          Local catalog
+        </p>
+        <h1 style={titleStyle}>
+          Verified SKU admission
+        </h1>
         <p style={mutedStyle}>
-          Local fixture import with price, dimensions,
-          image, lead, and availability gates.
+          Local fixture import with
+          price, dimensions, image,
+          lead, and availability gates.
         </p>
       </section>
       <section
         data-testid="verified-sku-summary"
         style={panelStyle}
       >
-        <h2 style={sectionTitleStyle}>Summary</h2>
+        <h2 style={sectionTitleStyle}>
+          Summary
+        </h2>
         <dl style={gridStyle}>
           <dt>Total raw SKUs</dt>
-          <dd>{catalog.totalRawSkus}</dd>
+          <dd>
+            {catalog.totalRawSkus}
+          </dd>
           <dt>Admitted</dt>
-          <dd>{catalog.admittedCount}</dd>
+          <dd>
+            {catalog.admittedCount}
+          </dd>
           <dt>Rejected</dt>
-          <dd>{catalog.rejectedCount}</dd>
+          <dd>
+            {catalog.rejectedCount}
+          </dd>
         </dl>
       </section>
       <section style={panelStyle}>
-        <h2 style={sectionTitleStyle}>Admission results</h2>
+        <h2 style={sectionTitleStyle}>
+          Admission results
+        </h2>
         <table
           data-testid="verified-sku-results-table"
           style={tableStyle}
@@ -51,19 +67,27 @@ export default function VerifiedSkuDebugPage() {
             </tr>
           </thead>
           <tbody>
-            {catalog.results.map((result) => (
-              <AdmissionRow
-                key={result.rawSkuId}
-                result={result}
-              />
-            ))}
+            {catalog.results.map(
+              (result) => (
+                <AdmissionRow
+                  key={result.rawSkuId}
+                  result={result}
+                />
+              ),
+            )}
           </tbody>
         </table>
       </section>
       <section style={panelStyle}>
-        <h2 style={sectionTitleStyle}>Debug JSON</h2>
+        <h2 style={sectionTitleStyle}>
+          Debug JSON
+        </h2>
         <pre style={jsonStyle}>
-          {JSON.stringify(catalog, null, 2)}
+          {JSON.stringify(
+            catalog,
+            null,
+            2,
+          )}
         </pre>
       </section>
     </main>
@@ -81,7 +105,9 @@ function AdmissionRow({
     >
       <td>{result.rawSkuId}</td>
       <td>{result.status}</td>
-      <td>{result.sku?.category ?? "none"}</td>
+      <td>
+        {result.sku?.category ?? "none"}
+      </td>
       <td>
         {result.issues
           .map((issue) => issue.code)
@@ -93,8 +119,10 @@ function AdmissionRow({
 
 function isDevPageDisabledInProduction(): boolean {
   return (
-    process.env.NODE_ENV === "production" &&
-    process.env.ENABLE_DEV_ROUTES !== "true"
+    process.env.NODE_ENV ===
+      "production" &&
+    process.env.ENABLE_DEV_ROUTES !==
+      "true"
   );
 }
 
@@ -140,7 +168,8 @@ const mutedStyle = {
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "max-content 1fr",
+  gridTemplateColumns:
+    "max-content 1fr",
   gap: "6px 12px",
   margin: 0,
 };

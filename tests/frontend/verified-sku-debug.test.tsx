@@ -6,7 +6,12 @@ import {
   screen,
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import VerifiedSkuDebugPage from "../../apps/web/app/dev/verified-sku-debug/page.js";
 
 afterEach(() => {
@@ -18,19 +23,31 @@ describe("Verified SKU debug page", () => {
     render(<VerifiedSkuDebugPage />);
 
     expect(
-      screen.getByTestId("verified-sku-debug-page"),
+      screen.getByTestId(
+        "verified-sku-debug-page",
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId("verified-sku-summary"),
+      screen.getByTestId(
+        "verified-sku-summary",
+      ),
     ).toHaveTextContent("Admitted");
     expect(
-      screen.getByTestId("verified-sku-summary"),
+      screen.getByTestId(
+        "verified-sku-summary",
+      ),
     ).toHaveTextContent("2");
     expect(
-      screen.getByTestId("verified-sku-results-table"),
-    ).toHaveTextContent("missing_price");
+      screen.getByTestId(
+        "verified-sku-results-table",
+      ),
+    ).toHaveTextContent(
+      "missing_price",
+    );
     expect(
-      screen.getByTestId("verified-sku-results-table"),
+      screen.getByTestId(
+        "verified-sku-results-table",
+      ),
     ).toHaveTextContent("unavailable");
   });
 });

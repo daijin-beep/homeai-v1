@@ -10,13 +10,16 @@ export function GET() {
 
   return Response.json({
     ok: true,
-    catalog: buildVerifiedSkuDebugFixture(),
+    catalog:
+      buildVerifiedSkuDebugFixture(),
   });
 }
 
 function isDevRouteDisabled(): boolean {
   return (
-    process.env.NODE_ENV === "production" &&
-    process.env.ENABLE_DEV_ROUTES !== "true"
+    process.env.NODE_ENV ===
+      "production" &&
+    process.env.ENABLE_DEV_ROUTES !==
+      "true"
   );
 }

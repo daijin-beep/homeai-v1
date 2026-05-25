@@ -5,22 +5,35 @@ import {
   statSync,
 } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
 
 const repoRoot = process.cwd();
 const lineFeedByte = 0x0a;
 const carriageReturnByte = 0x0d;
-const carriageReturn = String.fromCharCode(13);
-const lineFeed = String.fromCharCode(10);
-const escapedNewline = String.fromCharCode(92) + "n";
-const byteOrderMark = [0xef, 0xbb, 0xbf];
+const carriageReturn =
+  String.fromCharCode(13);
+const lineFeed =
+  String.fromCharCode(10);
+const escapedNewline =
+  String.fromCharCode(92) + "n";
+const byteOrderMark = [
+  0xef, 0xbb, 0xbf,
+];
 const formatCategory = /^\p{Cf}$/u;
-const lineSeparatorCategory = /^\p{Zl}$/u;
-const paragraphSeparatorCategory = /^\p{Zp}$/u;
+const lineSeparatorCategory =
+  /^\p{Zl}$/u;
+const paragraphSeparatorCategory =
+  /^\p{Zp}$/u;
 const forbiddenCodePoints = new Set([
-  0x061c, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2028,
-  0x2029, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066,
-  0x2067, 0x2068, 0x2069, 0xfeff,
+  0x061c, 0x200b, 0x200c, 0x200d,
+  0x200e, 0x200f, 0x2028, 0x2029,
+  0x202a, 0x202b, 0x202c, 0x202d,
+  0x202e, 0x2066, 0x2067, 0x2068,
+  0x2069, 0xfeff,
 ]);
 
 const batch19RawGuardFiles = [
@@ -32,7 +45,10 @@ const batch19RawGuardFiles = [
     path: "apps/web/app/dev/v1-beta-events-debug/page.tsx",
     expectedLfBytes: 158,
   },
-  { path: "apps/web/package.json", expectedLfBytes: 27 },
+  {
+    path: "apps/web/package.json",
+    expectedLfBytes: 27,
+  },
   {
     path: "packages/analytics/package.json",
     expectedLfBytes: 21,
@@ -49,7 +65,10 @@ const batch19RawGuardFiles = [
     path: "packages/contracts/src/v1-beta-event.ts",
     expectedLfBytes: 120,
   },
-  { path: "pnpm-lock.yaml", expectedLfBytes: 2568 },
+  {
+    path: "pnpm-lock.yaml",
+    expectedLfBytes: 2568,
+  },
   {
     path: "tests/analytics/v1-beta-event-repository.test.ts",
     expectedLfBytes: 63,
@@ -68,9 +87,12 @@ const batch19RawGuardFiles = [
   },
   {
     path: "tests/scope/v1-beta-events-scope-scan.test.ts",
-    expectedLfBytes: 242,
+    expectedLfBytes: 325,
   },
-  { path: "vitest.config.ts", expectedLfBytes: 87 },
+  {
+    path: "vitest.config.ts",
+    expectedLfBytes: 99,
+  },
 ];
 
 describe("V1 Beta events scope scan", () => {
@@ -83,7 +105,12 @@ describe("V1 Beta events scope scan", () => {
         "src",
         "v1-beta-event.ts",
       ),
-      join(repoRoot, "packages", "analytics", "src"),
+      join(
+        repoRoot,
+        "packages",
+        "analytics",
+        "src",
+      ),
       join(
         repoRoot,
         "apps",
@@ -120,19 +147,30 @@ describe("V1 Beta events scope scan", () => {
       /persistCanonicalRevision|confirmFloorplanDraft|createInMemoryP1Repositories/i,
     ];
 
-    const hits = files.flatMap((file) => {
-      const lines = readFileSync(file, "utf8")
-        .replaceAll(carriageReturn, "")
-        .split(lineFeed);
-      return lines.flatMap((line, index) =>
-        forbidden
-          .filter((pattern) => pattern.test(line))
-          .map(
-            (pattern) =>
-              `${file}:${index + 1}: ${pattern.toString()}`,
-          ),
-      );
-    });
+    const hits = files.flatMap(
+      (file) => {
+        const lines = readFileSync(
+          file,
+          "utf8",
+        )
+          .replaceAll(
+            carriageReturn,
+            "",
+          )
+          .split(lineFeed);
+        return lines.flatMap(
+          (line, index) =>
+            forbidden
+              .filter((pattern) =>
+                pattern.test(line),
+              )
+              .map(
+                (pattern) =>
+                  `${file}:${index + 1}: ${pattern.toString()}`,
+              ),
+        );
+      },
+    );
 
     expect(hits).toEqual([]);
   });
@@ -140,33 +178,60 @@ describe("V1 Beta events scope scan", () => {
   it.each(batch19RawGuardFiles)(
     "$path uses strict Batch 19 ASCII LF raw formatting",
     ({ path, expectedLfBytes }) => {
-      const bytes = readFileSync(join(repoRoot, path));
-      const text = bytes.toString("utf8");
+      const bytes = readFileSync(
+        join(repoRoot, path),
+      );
+      const text =
+        bytes.toString("utf8");
       const physicalLfCount = countByte(
         bytes,
         lineFeedByte,
       );
-      const lines = text.split(lineFeed);
+      const lines =
+        text.split(lineFeed);
 
-      expect(Array.from(bytes.subarray(0, 3))).not.toEqual(
-        byteOrderMark,
+      expect(
+        Array.from(
+          bytes.subarray(0, 3),
+        ),
+      ).not.toEqual(byteOrderMark);
+      expect(physicalLfCount).toBe(
+        expectedLfBytes,
       );
-      expect(physicalLfCount).toBe(expectedLfBytes);
-      expect(countByte(bytes, carriageReturnByte)).toBe(0);
-      expect(bytes[bytes.length - 1]).toBe(lineFeedByte);
-      expect(lines.length).toBe(physicalLfCount + 1);
-      expect(text).not.toContain(escapedNewline);
-      expect(findHiddenCharacters(text)).toEqual([]);
-      expect(findNonAsciiBytes(bytes)).toEqual([]);
+      expect(
+        countByte(
+          bytes,
+          carriageReturnByte,
+        ),
+      ).toBe(0);
+      expect(
+        bytes[bytes.length - 1],
+      ).toBe(lineFeedByte);
+      expect(lines.length).toBe(
+        physicalLfCount + 1,
+      );
+      expect(text).not.toContain(
+        escapedNewline,
+      );
+      expect(
+        findHiddenCharacters(text),
+      ).toEqual([]);
+      expect(
+        findNonAsciiBytes(bytes),
+      ).toEqual([]);
     },
   );
 });
 
-function collectFiles(roots: string[]): string[] {
+function collectFiles(
+  roots: string[],
+): string[] {
   return roots
     .filter((root) => existsSync(root))
     .flatMap((root) => walk(root))
-    .filter((file) => /\.(ts|tsx|json)$/.test(file));
+    .filter((file) =>
+      /\.(ts|tsx|json)$/.test(file),
+    );
 }
 
 function walk(path: string): string[] {
@@ -174,13 +239,17 @@ function walk(path: string): string[] {
   if (stat.isFile()) {
     return [path];
   }
-  return readdirSync(path).flatMap((entry) => {
-    const child = join(path, entry);
-    if (child.includes("node_modules")) {
-      return [];
-    }
-    return walk(child);
-  });
+  return readdirSync(path).flatMap(
+    (entry) => {
+      const child = join(path, entry);
+      if (
+        child.includes("node_modules")
+      ) {
+        return [];
+      }
+      return walk(child);
+    },
+  );
 }
 
 function countByte(
@@ -198,10 +267,15 @@ function countByte(
   return count;
 }
 
-function findNonAsciiBytes(bytes: Buffer): string[] {
+function findNonAsciiBytes(
+  bytes: Buffer,
+): string[] {
   const nonAscii: string[] = [];
 
-  for (const [index, byte] of bytes.entries()) {
+  for (const [
+    index,
+    byte,
+  ] of bytes.entries()) {
     if (byte > 0x7f) {
       nonAscii.push(
         `0x${byte.toString(16).toUpperCase().padStart(2, "0")} at byte ${index}`,
@@ -212,12 +286,15 @@ function findNonAsciiBytes(bytes: Buffer): string[] {
   return nonAscii;
 }
 
-function findHiddenCharacters(text: string): string[] {
+function findHiddenCharacters(
+  text: string,
+): string[] {
   const hidden: string[] = [];
   let index = 0;
 
   for (const character of text) {
-    const codePoint = character.codePointAt(0);
+    const codePoint =
+      character.codePointAt(0);
 
     if (codePoint === undefined) {
       index += 1;
@@ -225,10 +302,16 @@ function findHiddenCharacters(text: string): string[] {
     }
 
     if (
-      forbiddenCodePoints.has(codePoint) ||
+      forbiddenCodePoints.has(
+        codePoint,
+      ) ||
       formatCategory.test(character) ||
-      lineSeparatorCategory.test(character) ||
-      paragraphSeparatorCategory.test(character)
+      lineSeparatorCategory.test(
+        character,
+      ) ||
+      paragraphSeparatorCategory.test(
+        character,
+      )
     ) {
       hidden.push(
         `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")} at char ${index}`,

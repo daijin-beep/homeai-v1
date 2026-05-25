@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
 import {
   RawSkuFixtureSchema,
   VerifiedSkuAdmissionResultSchema,
@@ -13,69 +17,97 @@ import {
 
 describe("Verified SKU contracts", () => {
   it("validates admitted local fixture SKUs", () => {
-    const catalog = importVerifiedSkuCatalog(
-      localRawSkuFixtures,
-    );
-    const firstSku = catalog.verifiedSkus[0];
+    const catalog =
+      importVerifiedSkuCatalog(
+        localRawSkuFixtures,
+      );
+    const firstSku =
+      catalog.verifiedSkus[0];
 
     expect(
-      VerifiedSkuCatalogSchema.safeParse(catalog).success,
+      VerifiedSkuCatalogSchema.safeParse(
+        catalog,
+      ).success,
     ).toBe(true);
     expect(firstSku).toBeDefined();
     expect(
-      VerifiedSkuSchema.safeParse(firstSku).success,
+      VerifiedSkuSchema.safeParse(
+        firstSku,
+      ).success,
     ).toBe(true);
     expect(
-      firstSku?.imageUri.startsWith("fixture://"),
+      firstSku?.imageUri.startsWith(
+        "fixture://",
+      ),
     ).toBe(true);
-    expect(firstSku?.leadUri.startsWith("fixture://")).toBe(
-      true,
-    );
+    expect(
+      firstSku?.leadUri.startsWith(
+        "fixture://",
+      ),
+    ).toBe(true);
   });
 
   it("rejects missing price, dimensions, and unavailable fixtures", () => {
-    const catalog = importVerifiedSkuCatalog(
-      localRawSkuFixtures,
-    );
+    const catalog =
+      importVerifiedSkuCatalog(
+        localRawSkuFixtures,
+      );
 
-    expect(catalog.admittedCount).toBe(2);
-    expect(catalog.rejectedCount).toBe(3);
+    expect(catalog.admittedCount).toBe(
+      2,
+    );
+    expect(catalog.rejectedCount).toBe(
+      3,
+    );
     expect(
       catalog.results.some((result) =>
         result.issues.some(
-          (issue) => issue.code === "missing_price",
+          (issue) =>
+            issue.code ===
+            "missing_price",
         ),
       ),
     ).toBe(true);
     expect(
       catalog.results.some((result) =>
         result.issues.some(
-          (issue) => issue.code === "missing_dimensions",
+          (issue) =>
+            issue.code ===
+            "missing_dimensions",
         ),
       ),
     ).toBe(true);
     expect(
       catalog.results.some((result) =>
         result.issues.some(
-          (issue) => issue.code === "unavailable",
+          (issue) =>
+            issue.code ===
+            "unavailable",
         ),
       ),
     ).toBe(true);
   });
 
   it("rejects non-fixture image and lead URIs", () => {
-    const raw = RawSkuFixtureSchema.parse(
-      localRawSkuFixtures[0],
-    );
+    const raw =
+      RawSkuFixtureSchema.parse(
+        localRawSkuFixtures[0],
+      );
     const result = admitVerifiedSku({
       ...raw,
-      imageUri: "asset://example-invalid/sofa.svg",
-      leadUri: "lead://example-invalid/lead",
+      imageUri:
+        "asset://example-invalid/sofa.svg",
+      leadUri:
+        "lead://example-invalid/lead",
     });
 
-    expect(result.status).toBe("rejected");
+    expect(result.status).toBe(
+      "rejected",
+    );
     expect(
-      result.issues.map((issue) => issue.code),
+      result.issues.map(
+        (issue) => issue.code,
+      ),
     ).toEqual(
       expect.arrayContaining([
         "missing_fixture_image",
@@ -83,8 +115,9 @@ describe("Verified SKU contracts", () => {
       ]),
     );
     expect(
-      VerifiedSkuAdmissionResultSchema.safeParse(result)
-        .success,
+      VerifiedSkuAdmissionResultSchema.safeParse(
+        result,
+      ).success,
     ).toBe(true);
   });
 });
