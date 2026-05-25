@@ -134,8 +134,8 @@ function createBootstrap(): V1BetaHomeBootstrap {
       bootstrap: "/api/beta/home-user-beta/bootstrap",
       uploadFloorplan: "/api/beta/home-user-beta/floorplan/upload",
       p1Session: "/api/p1/home-user-beta/session",
-      p1DraftViewModel: "/api/p1/drafts/draft-user-beta/view-model",
-      p1Confirm: "/api/p1/drafts/draft-user-beta/confirm",
+      p1DraftViewModel: "/api/p1/drafts/{draftRevisionId}",
+      p1Confirm: "/api/p1/drafts/{draftRevisionId}/confirm",
     },
     generatedAt: timestamp,
   });
