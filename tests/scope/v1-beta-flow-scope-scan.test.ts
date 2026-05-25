@@ -27,7 +27,7 @@ const batch18RawGuardFiles = [
   },
   {
     path: "packages/contracts/src/index.ts",
-    expectedLfBytes: 41,
+    expectedLfBytes: 42,
     minLfBytes: 25,
   },
   {
