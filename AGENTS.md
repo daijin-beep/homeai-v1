@@ -89,3 +89,45 @@ Reject any proposed implementation that:
 11. Models balconies as wall mutations instead of independent room-like spaces with roomType = balcony.
 12. Produces geometry-dependent downstream artifacts without canonicalRevisionId and geometryHash.
 13. Changes behavior without tests.
+
+---
+
+## Hermes workflow orchestration addendum
+
+This repository also uses the HomeAI Hermes Workflow V2 operating model.
+Keep the P1 Space Truth rules above authoritative, and use these workflow files for orchestration:
+
+- `.hermes/workflows/00_HOMEAI_HERMES_OPERATING_ARCHITECTURE.md`
+- `.hermes/workflows/01_WECHAT_COMMAND_PROTOCOL.md`
+- `.hermes/workflows/02_CROSS_REVIEW_PROTOCOL.md`
+- `.hermes/workflows/03_AUTOMATED_MERGE_POLICY.md`
+- `.hermes/workflows/04_GPT_PRO_GATE_PACKET.md`
+- `.hermes/workflows/05_TASK_CARD_TEMPLATE.md`
+- `.hermes/workflows/06_REVIEW_TEMPLATES.md`
+- `.hermes/workflows/07_ROLL_OUT_PLAN.md`
+- `.hermes/skills/homeai-*`
+
+Hermes is the WeChat-facing workflow orchestrator. Codex and Claude Code are implementation/review lanes. GPT Pro is the architecture gate for R3 work.
+
+### HomeAI risk tiers
+
+```text
+R0: docs only, comments, non-runtime workflow docs.
+R1: isolated tests, fixtures, debug display fields, minor UI non-contract change.
+R2: runtime behavior in non-red-zone modules, APIs without canonical schema changes, provider scaffolds that remain mocked/disabled.
+R3: Space Truth, geometry, canonical contracts, render verification semantics, real provider/network/secrets/payment/security, migrations, data loss risk.
+```
+
+### Required separation
+
+```text
+Codex implementation → Claude Code review → Hermes deterministic gates.
+Claude Code implementation → Codex review → Hermes deterministic gates.
+R3 task → cross-review + GPT architecture gate + deterministic gates.
+```
+
+The same agent may not be the sole implementer, sole reviewer, and merger.
+
+### Merge policy
+
+AI may merge only after `.hermes/workflows/03_AUTOMATED_MERGE_POLICY.md` allows it. Passing tests alone is not sufficient. R3 work requires GPT architecture approval before automated merge.
