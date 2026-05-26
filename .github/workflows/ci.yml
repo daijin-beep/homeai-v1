@@ -35,10 +35,10 @@ jobs:
         run: corepack pnpm typecheck
 
       - name: Full tests
-        run: corepack pnpm test
+        run: corepack pnpm vitest run --maxWorkers=1 --minWorkers=1
 
       - name: Scope tests
-        run: corepack pnpm vitest tests/scope
+        run: corepack pnpm vitest run tests/scope --maxWorkers=1 --minWorkers=1
 
       - name: Red-zone diff check
         shell: bash
