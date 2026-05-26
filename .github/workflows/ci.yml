@@ -110,10 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import pathlib, subprocess, sys
-          files = subprocess.check_output(['git','diff','--name-only', 'origin/${{ github.base_ref || 'main' }}...HEAD'], text=True).splitlines()
-          bad=[]
+          python -c "import pathlib, subprocess, sys; files=subprocess.check_output(['git','diff','--name-only','origin/${{ github.base_ref || 'main' }}...HEAD'], text=True).splitlines(); bad=[]
           for f in files:
               p=pathlib.Path(f)
               if not p.exists() or p.is_dir():
@@ -124,7 +121,5 @@ jobs:
               txt=b.decode('utf-8', errors='ignore')
               if any('\u202a' <= c <= '\u202e' or '\u2066' <= c <= '\u2069' for c in txt):
                   bad.append(f'{f}: bidi unicode')
-          if bad:
-              print('\n'.join(bad))
-              sys.exit(1)
-          PY
+          print('\n'.join(bad)) if bad else None
+          sys.exit(1 if bad else 0)"
