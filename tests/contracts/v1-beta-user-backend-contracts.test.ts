@@ -261,7 +261,7 @@ function createUploadResponse(): UploadFloorplanResponse {
       "Fixture floorplan accepted as an untrusted draft; start P1 review before confirmation.",
     nextAction: {
       actionId: "open_p1_session",
-      label: "Review floorplan",
+      label: "Start P1 review session",
       method: "POST",
       href: "/api/p1/home-user-beta/session",
       enabled: true,
