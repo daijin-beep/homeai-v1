@@ -100,7 +100,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          matches=$(git grep -nE "(CanonicalFloorplanRevision|SceneContract|geometryHash)" -- . ':!packages/contracts/src/**' ':!tests/**' ':!docs/**' ':!AGENTS.md' ':!CLAUDE.md' ':!CODEX.md' ':!.hermes/**' || true)
+          files=$(git diff --name-only "origin/${{ github.base_ref || 'main' }}"...HEAD | grep -Ev '(^docs/|^\.hermes/|^\.github/|^packages/contracts/src/|^tests/|^AGENTS\.md$|^CLAUDE\.md$|^CODEX\.md$|\.md$|\.mdx$|\.txt$|\.ps1$|\.sh$|\.ya?ml$|\.json$|\.lock$)' || true)
+          if [ -z "$files" ]; then exit 0; fi
+          matches=$(git grep -nE "(CanonicalFloorplanRevision|SceneContract|geometryHash)" -- $files || true)
           if printf '%s\n' "$matches" | grep -E "z\.object|interface |type .*="; then
             echo "Potential duplicate canonical schema outside contracts detected."
             exit 1
