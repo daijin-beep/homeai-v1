@@ -49,6 +49,32 @@ describe("V1 Beta user backend shell scope scan", () => {
 
     expect(hits).toEqual([]);
   });
+
+  it("does not create canonical floorplan records or mutate confirmed geometry", () => {
+    const files = collectFiles([
+      join(repoRoot, "packages", "contracts", "src", "v1-beta-user-backend.ts"),
+      join(repoRoot, "apps", "web", "app", "api", "beta"),
+    ]);
+    const forbidden = [
+      /CanonicalFloorplan/i,
+      /persistCanonicalRevision/i,
+      /confirmFloorplanDraft/i,
+      /confirmedGeometryMutable:\s*true/i,
+    ];
+
+    const hits = files.flatMap((file) => {
+      const lines = readFileSync(file, "utf8")
+        .replaceAll(carriageReturn, "")
+        .split(lineFeed);
+      return lines.flatMap((line, index) =>
+        forbidden
+          .filter((pattern) => pattern.test(line))
+          .map((pattern) => `${file}:${index + 1}: ${pattern.toString()}`),
+      );
+    });
+
+    expect(hits).toEqual([]);
+  });
 });
 
 function collectFiles(roots: string[]): string[] {

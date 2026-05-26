@@ -20,6 +20,39 @@ describe("V1 Beta user backend route shell", () => {
     expect(body.flow.guardrails.dbPersistenceEnabled).toBe(false);
     expect(body.flow.guardrails.authEnforced).toBe(false);
     expect(body.flow.guardrails.confirmedGeometryMutable).toBe(false);
+    expect(body.flow.currentState).toBe("p1_session_required");
+    expect(body.flow.validation).toEqual({
+      status: "not_evaluable",
+      canConfirm: false,
+      issueCount: 0,
+      blockingIssueCount: 1,
+    });
+    expect(body.flow.trace.draftRevisionId).toBeUndefined();
+    expect(body.flow.trace.canonicalRevisionId).toBeUndefined();
+    expect(body.flow.trace.geometryHash).toBeUndefined();
+  });
+
+  it("beta bootstrap cannot advertise a confirmable draft before P1 session", async () => {
+    const response = await GET(request("/bootstrap"), {
+      params: { homeId: "home-route-beta" },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.flow.currentState).not.toBe("draft_ready");
+    expect(body.flow.validation.status).toBe("not_evaluable");
+    expect(body.flow.validation.canConfirm).toBe(false);
+    expect(body.flow.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "P1_SESSION_REQUIRED",
+          severity: "blocker",
+        }),
+      ]),
+    );
+    expect(body.flow.trace.draftRevisionId).toBeUndefined();
+    expect(body.flow.trace.canonicalRevisionId).toBeUndefined();
+    expect(body.flow.trace.geometryHash).toBeUndefined();
   });
 
   it("accepts fixture upload shell requests and returns draft trace only", async () => {
@@ -34,11 +67,36 @@ describe("V1 Beta user backend route shell", () => {
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.currentState).toBe("draft_ready");
+    expect(body.currentState).toBe("p1_session_required");
     expect(body.trace.homeId).toBe("home-route-beta");
     expect(body.trace.canonicalRevisionId).toBeUndefined();
     expect(body.trace.geometryHash).toBeUndefined();
     expect(body.nextAction.enabled).toBe(true);
+    expect(body.userMessage).toContain("untrusted draft");
+  });
+
+  it("upload response remains an untrusted draft next-action, not a valid canonical draft", async () => {
+    const response = await POST(
+      request("/floorplan/upload", {
+        uploadMode: "fixture_asset",
+        fixtureKey: "one-bedroom",
+      }),
+      { params: { homeId: "home-route-beta" } },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.currentState).toBe("p1_session_required");
+    expect(body.validation).toBeUndefined();
+    expect(body.trace.draftRevisionId).toBeDefined();
+    expect(body.trace.canonicalRevisionId).toBeUndefined();
+    expect(body.trace.geometryHash).toBeUndefined();
+    expect(body.nextAction).toEqual(
+      expect.objectContaining({
+        actionId: "open_p1_session",
+        enabled: true,
+      }),
+    );
   });
 
   it("keeps file placeholder uploads pending until mocked parse output exists", async () => {
