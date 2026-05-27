@@ -116,6 +116,7 @@ describe("P1 Canvas normal mode UI", () => {
     fireEvent.pointerDown(screen.getByTestId("endpoint-end"));
     fireEvent.pointerUp(screen.getByTestId("p1-canvas-stage"), { clientX: 100, clientY: 100 });
     await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.moveEndpoint"));
+    await waitForEditorIdle();
 
     fireEvent.click(screen.getByText("删除墙"));
     await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("wall.delete"));
@@ -500,7 +501,9 @@ describe("P1 Canvas normal mode UI", () => {
     expect(scenario.layoutCalls).toHaveLength(0);
 
     await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("advanced.settings.toggle"));
+    await waitForEditorIdle();
     fireEvent.click(screen.getByText("确认户型，开始设计"));
+    expect(await screen.findByTestId("confirm-success")).toBeInTheDocument();
     expect(await screen.findByTestId("layout-hash")).toHaveTextContent("layoutIntentHash=");
     expect(screen.getByLabelText("AI 补全未摆放家具")).toBeChecked();
   });
@@ -848,6 +851,10 @@ function mockP1Fetch(
 
 function lastOperation(scenario: ReturnType<typeof mockP1Fetch>): FloorplanEditOperation | undefined {
   return scenario.calls.at(-1)?.operations.at(-1);
+}
+
+async function waitForEditorIdle(): Promise<void> {
+  await waitFor(() => expect(screen.getByTestId("dirty-state")).not.toHaveTextContent("保存中"));
 }
 
 function lastLayoutOperation(scenario: ReturnType<typeof mockP1Fetch>): LayoutIntentOperation | undefined {
