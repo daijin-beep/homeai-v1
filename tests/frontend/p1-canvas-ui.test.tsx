@@ -253,7 +253,7 @@ describe("P1 Canvas normal mode UI", () => {
     fireEvent.change(screen.getByLabelText("房间类型"), { target: { value: "study" } });
     await waitFor(() => expect(lastOperation(scenario)?.operationType).toBe("room.type.change"));
 
-    expect(screen.getByTestId("room-label-room-simple-living")).toHaveTextContent("study");
+    await waitFor(() => expect(screen.getByTestId("room-label-room-simple-living")).toHaveTextContent("study"));
     expect(JSON.stringify(scenario.draft.rooms.map((room) => room.polygon))).toBe(beforeRooms);
   });
 
