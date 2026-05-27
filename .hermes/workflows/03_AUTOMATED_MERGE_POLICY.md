@@ -10,10 +10,36 @@ The owner does not need to manually inspect code. The owner may still stop or ov
 
 | Risk | Merge mode | Required before merge |
 |---|---|---|
-| R0 | Auto merge | Hermes checks pass |
-| R1 | Auto merge | Cross-review or Hermes review + tests pass |
-| R2 | Auto merge | Opposite-agent review approve + deterministic gates pass |
-| R3 | GPT-gated auto merge | Opposite-agent review approve + GPT architecture gate approve + deterministic gates pass |
+| R0 | Auto merge | Hermes checks pass + GitHub checks present and green |
+| R1 | Auto merge | Cross-review or Hermes review + tests pass + GitHub checks present and green |
+| R2 | Auto merge | Opposite-agent review approve + deterministic gates pass + GitHub checks present and green |
+| R3 | GPT-gated auto merge | Opposite-agent review approve + GPT architecture gate approve + deterministic gates pass + GitHub checks present and green |
+
+## Automatic R3 classification
+
+Classify a PR/task as R3 unless GPT Pro explicitly downgrades it in writing when it changes:
+
+```text
+packages/contracts/src/**
+packages/floorplan-parser/**
+packages/geometry/**
+packages/scene/**
+packages/render-verifier/**
+packages/ads-runtime/**
+apps/web/app/p1/**
+apps/web/app/api/** involving beta / space / render / provider / payment / auth
+any provider / network / secret / payment / auth behavior
+any merge policy / CI / branch safety / agent workflow / automated merge behavior
+```
+
+R3 requires:
+
+1. Opposite-agent review.
+2. Deterministic premerge gate.
+3. GPT Pro architecture gate.
+4. Merge only after explicit GPT approve.
+
+Same agent may not implement and approve the same PR. Hermes may execute merge only after all required review artifacts exist as PR comments or committed reports.
 
 ## Universal merge blockers
 
@@ -22,12 +48,15 @@ Never merge if any of the following is true:
 - Tests fail.
 - Typecheck fails.
 - Scope tests fail.
+- GitHub checks are missing, zero, pending, skipped, cancelled, neutral, timed out, action-required, or failing.
 - Working tree is dirty.
 - Merge conflict exists.
 - Reviewer verdict is `request changes` or `reject`.
 - GPT gate is required but missing.
 - GPT gate verdict is not approve.
 - Unauthorized Space Truth red-zone diff exists.
+- Shared contracts changed without GPT approval.
+- API semantics changed without GPT approval.
 - Real provider is enabled without explicit approved task card.
 - Unauthorized network calls are introduced.
 - Secrets, tokens, credentials, or key names are committed.
@@ -37,6 +66,8 @@ Never merge if any of the following is true:
 - Failed render can enter gallery.
 - PR scope differs materially from task card.
 - Implementation agent is also the only reviewer.
+- Same agent implemented and approved the same PR.
+- Required review artifacts are missing from PR comments or committed reports.
 
 ## Allowed merge commands
 

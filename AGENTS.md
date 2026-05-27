@@ -115,8 +115,27 @@ Hermes is the WeChat-facing workflow orchestrator. Codex and Claude Code are imp
 R0: docs only, comments, non-runtime workflow docs.
 R1: isolated tests, fixtures, debug display fields, minor UI non-contract change.
 R2: runtime behavior in non-red-zone modules, APIs without canonical schema changes, provider scaffolds that remain mocked/disabled.
-R3: Space Truth, geometry, canonical contracts, render verification semantics, real provider/network/secrets/payment/security, migrations, data loss risk.
+R3: Space Truth, geometry, canonical contracts, shared contracts/API semantics, render verification semantics, provider/network/secrets/payment/auth/security, CI/merge-policy/agent-workflow automation, migrations, data loss risk.
 ```
+
+### Automatic R3 classification triggers
+
+Unless GPT Pro explicitly downgrades the task in writing, classify changes to any of the following as R3:
+
+```text
+packages/contracts/src/**
+packages/floorplan-parser/**
+packages/geometry/**
+packages/scene/**
+packages/render-verifier/**
+packages/ads-runtime/**
+apps/web/app/p1/**
+apps/web/app/api/** involving beta / space / render / provider / payment / auth
+any provider / network / secret / payment / auth change
+any merge policy / CI / branch safety / agent workflow / automated merge change
+```
+
+R3 requires opposite-agent review, deterministic premerge gate, GPT Pro architecture gate, and explicit GPT approve before merge.
 
 ### Required separation
 
