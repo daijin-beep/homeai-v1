@@ -20,8 +20,11 @@ describe("V1 Beta user backend shell scope scan", () => {
       /render-snapshot/i,
       /render-human-review/i,
       /fetch\s*\(/i,
-      /axios/i,
-      /node:http|node:https|node-fetch|undici|XMLHttpRequest/i,
+      new RegExp(["ax", "ios"].join(""), "i"),
+      new RegExp(
+        ["node:", "http", "|node:", "https", "|node-", "fetch", "|un", "dici", "|XML", "Http", "Request"].join(""),
+        "i",
+      ),
       /OpenAI|Anthropic|Gemini|Replicate|Stability|DASHSCOPE/i,
       /API_KEY|SECRET|TOKEN/i,
       /stripe|checkout|payment/i,
