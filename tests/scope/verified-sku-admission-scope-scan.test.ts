@@ -36,58 +36,58 @@ const forbiddenCodePoints = new Set([
   0x2069, 0xfeff,
 ]);
 
-const batch19RawGuardFiles = [
+const batch20RawGuardFiles = [
   {
-    path: "apps/web/app/api/dev/v1-beta-events/route.ts",
-    expectedLfBytes: 81,
+    path: "apps/web/app/api/dev/verified-skus/route.ts",
+    expectedLfBytes: 25,
   },
   {
-    path: "apps/web/app/dev/v1-beta-events-debug/page.tsx",
-    expectedLfBytes: 158,
+    path: "apps/web/app/dev/verified-sku-debug/page.tsx",
+    expectedLfBytes: 187,
   },
   {
     path: "apps/web/package.json",
     expectedLfBytes: 27,
   },
   {
-    path: "packages/analytics/package.json",
+    path: "packages/contracts/src/soft-decor-gps.ts",
+    expectedLfBytes: 404,
+  },
+  {
+    path: "packages/soft-decor-gps/package.json",
     expectedLfBytes: 21,
   },
   {
-    path: "packages/analytics/src/index.ts",
-    expectedLfBytes: 161,
-  },
-  {
-    path: "packages/contracts/src/index.ts",
-    expectedLfBytes: 42,
-  },
-  {
-    path: "packages/contracts/src/v1-beta-event.ts",
-    expectedLfBytes: 120,
+    path: "packages/soft-decor-gps/src/index.ts",
+    expectedLfBytes: 416,
   },
   {
     path: "pnpm-lock.yaml",
     expectedLfBytes: 2568,
   },
   {
-    path: "tests/analytics/v1-beta-event-repository.test.ts",
-    expectedLfBytes: 63,
+    path: "tests/contracts/verified-sku-contracts.test.ts",
+    expectedLfBytes: 123,
   },
   {
-    path: "tests/analytics/v1-beta-event-route.test.ts",
-    expectedLfBytes: 107,
-  },
-  {
-    path: "tests/contracts/v1-beta-event-contracts.test.ts",
-    expectedLfBytes: 131,
-  },
-  {
-    path: "tests/frontend/v1-beta-events-debug.test.tsx",
-    expectedLfBytes: 33,
+    path: "tests/frontend/verified-sku-debug.test.tsx",
+    expectedLfBytes: 53,
   },
   {
     path: "tests/scope/v1-beta-events-scope-scan.test.ts",
     expectedLfBytes: 325,
+  },
+  {
+    path: "tests/scope/verified-sku-admission-scope-scan.test.ts",
+    expectedLfBytes: 324,
+  },
+  {
+    path: "tests/soft-decor-gps/verified-sku-admission.test.ts",
+    expectedLfBytes: 74,
+  },
+  {
+    path: "tests/soft-decor-gps/verified-sku-route.test.ts",
+    expectedLfBytes: 63,
   },
   {
     path: "vitest.config.ts",
@@ -95,20 +95,20 @@ const batch19RawGuardFiles = [
   },
 ];
 
-describe("V1 Beta events scope scan", () => {
-  it("keeps Batch 19 local-only and outside provider, persistence, ADS runtime, and Space Truth write scopes", () => {
+describe("Verified SKU admission scope scan", () => {
+  it("keeps Batch 20 on local fixtures without live provider, network, commerce, or Space Truth writes", () => {
     const files = collectFiles([
       join(
         repoRoot,
         "packages",
         "contracts",
         "src",
-        "v1-beta-event.ts",
+        "soft-decor-gps.ts",
       ),
       join(
         repoRoot,
         "packages",
-        "analytics",
+        "soft-decor-gps",
         "src",
       ),
       join(
@@ -118,7 +118,7 @@ describe("V1 Beta events scope scan", () => {
         "app",
         "api",
         "dev",
-        "v1-beta-events",
+        "verified-skus",
       ),
       join(
         repoRoot,
@@ -126,7 +126,7 @@ describe("V1 Beta events scope scan", () => {
         "web",
         "app",
         "dev",
-        "v1-beta-events-debug",
+        "verified-sku-debug",
       ),
     ]);
     const forbidden = [
@@ -137,13 +137,12 @@ describe("V1 Beta events scope scan", () => {
       new RegExp(["fet", "ch", "\\s*\\("].join(""), "i"),
       new RegExp(["ax", "ios"].join(""), "i"),
       new RegExp(["node", ":http", "|node", ":https", "|node-", "fetch", "|un", "dici", "|XML", "Http", "Request"].join(""), "i"),
+      new RegExp(["https", "?:", "\\/\\/"].join(""), "i"),
       /OpenAI|Anthropic|Gemini|Replicate|Stability|DASHSCOPE/i,
       new RegExp(["API", "_KEY", "|SEC", "RET", "|TOK", "EN"].join(""), "i"),
       /stripe|checkout|payment/i,
-      /sku/i,
       /pdf|dwg|dxf/i,
       /construction|contractor|load-bearing|structural/i,
-      /writeFile|appendFile|readFile|prisma|drizzle|postgres|sqlite/i,
       /persistCanonicalRevision|confirmFloorplanDraft|createInMemoryP1Repositories/i,
     ];
 
@@ -175,8 +174,8 @@ describe("V1 Beta events scope scan", () => {
     expect(hits).toEqual([]);
   });
 
-  it.each(batch19RawGuardFiles)(
-    "$path uses strict Batch 19 ASCII LF raw formatting",
+  it.each(batch20RawGuardFiles)(
+    "$path uses strict Batch 20 ASCII LF raw formatting",
     ({ path, expectedLfBytes }) => {
       const bytes = readFileSync(
         join(repoRoot, path),
