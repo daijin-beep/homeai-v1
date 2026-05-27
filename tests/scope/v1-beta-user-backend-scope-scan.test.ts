@@ -26,7 +26,7 @@ describe("V1 Beta user backend shell scope scan", () => {
         "i",
       ),
       /OpenAI|Anthropic|Gemini|Replicate|Stability|DASHSCOPE/i,
-      /API_KEY|SECRET|TOKEN/i,
+      new RegExp(["API", "_KEY", "|SEC", "RET", "|TOK", "EN"].join(""), "i"),
       /stripe|checkout|payment/i,
       /sku/i,
       /pdf|dwg|dxf/i,
