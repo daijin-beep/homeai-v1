@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { IdSchema, TimestampSchema } from "./common.js";
 import { GeometryHashSchema } from "./p1-floorplan-adjustment.js";
-import { P1ValidationSummarySchema } from "./p1-api-boundary.js";
 import { V1BetaFlowStageIdSchema } from "./v1-beta-flow.js";
 
 export const V1BetaUserBackendSourceSchema = z.literal(
@@ -9,10 +8,13 @@ export const V1BetaUserBackendSourceSchema = z.literal(
 );
 
 export const V1BetaUserHomeStateSchema = z.enum([
+  "not_started",
+  "upload_ready",
   "new",
   "uploaded",
   "parse_pending",
   "parse_failed",
+  "p1_session_required",
   "draft_ready",
   "p1_editing",
   "p1_invalid",
@@ -25,6 +27,34 @@ export const V1BetaUserHomeStateSchema = z.enum([
   "decor_ready",
   "lead_ready",
 ]);
+
+export const V1BetaUserValidationSummarySchema = z
+  .object({
+    status: z.enum([
+      "pending",
+      "not_evaluable",
+      "valid",
+      "warning",
+      "invalid",
+    ]),
+    canConfirm: z.boolean(),
+    issueCount: z.number().int().nonnegative(),
+    blockingIssueCount: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((validation, ctx) => {
+    if (
+      validation.canConfirm &&
+      validation.status !== "valid" &&
+      validation.status !== "warning"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "canConfirm requires evaluable valid or warning status",
+        path: ["canConfirm"],
+      });
+    }
+  });
 
 export const V1BetaUserActionMethodSchema = z.enum([
   "GET",
@@ -104,7 +134,7 @@ export const P1UserFlowViewModelSchema = z
     trace: V1BetaUserTraceSchema,
     currentState: V1BetaUserHomeStateSchema,
     userVisibleStage: V1BetaFlowStageIdSchema,
-    validation: P1ValidationSummarySchema.optional(),
+    validation: V1BetaUserValidationSummarySchema.optional(),
     nextActions: z.array(V1BetaUserActionSchema),
     blockers: z.array(V1BetaUserBlockerSchema),
     guardrails: V1BetaUserBackendGuardrailsSchema,
@@ -125,6 +155,19 @@ export const P1UserFlowViewModelSchema = z
         message:
           "flow without enabled actions must expose a blocking blocker",
         path: ["blockers"],
+      });
+    }
+
+    if (
+      flow.validation?.canConfirm === true &&
+      flow.trace.draftRevisionId === undefined &&
+      flow.trace.canonicalRevisionId === undefined
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "confirmable beta flow requires an explicit draft or canonical revision trace",
+        path: ["validation", "canConfirm"],
       });
     }
 
@@ -209,7 +252,7 @@ export const UploadFloorplanResponseSchema = z
     assetId: IdSchema,
     parseJobId: IdSchema,
     draftRevisionId: IdSchema,
-    currentState: z.enum(["parse_pending", "draft_ready"]),
+    currentState: z.enum(["parse_pending", "p1_session_required"]),
     userMessage: z.string().min(1),
     nextAction: V1BetaUserActionSchema,
     trace: V1BetaUserTraceSchema,
@@ -254,6 +297,9 @@ export type V1BetaUserBackendSource = z.infer<
 >;
 export type V1BetaUserHomeState = z.infer<
   typeof V1BetaUserHomeStateSchema
+>;
+export type V1BetaUserValidationSummary = z.infer<
+  typeof V1BetaUserValidationSummarySchema
 >;
 export type V1BetaUserAction = z.infer<typeof V1BetaUserActionSchema>;
 export type V1BetaUserBlocker = z.infer<typeof V1BetaUserBlockerSchema>;

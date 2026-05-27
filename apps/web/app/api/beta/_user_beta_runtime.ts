@@ -76,27 +76,32 @@ export function buildP1UserFlowViewModel(
     source: "mock_contract_shell",
     trace: {
       homeId,
-      assetId: `asset-user-beta-${homeId}`,
-      parseJobId: `parse-user-beta-${homeId}`,
     },
-    currentState: "draft_ready",
+    currentState: "p1_session_required",
     userVisibleStage: "space_confirmation",
     validation: {
-      status: "valid",
-      canConfirm: true,
+      status: "not_evaluable",
+      canConfirm: false,
       issueCount: 0,
-      blockingIssueCount: 0,
+      blockingIssueCount: 1,
     },
     nextActions: [
       {
         actionId: "open_p1_session",
-        label: "Review floorplan",
+        label: "Start P1 review session",
         method: "POST",
         href: `/api/p1/${homeId}/session`,
         enabled: true,
       },
     ],
     blockers: [
+      {
+        code: "P1_SESSION_REQUIRED",
+        message:
+          "Start or load a real P1 session before evaluating or confirming a floorplan draft.",
+        severity: "blocker",
+        target: "p1Session",
+      },
       {
         code: "AUTH_NOT_ENFORCED",
         message:
@@ -126,10 +131,10 @@ export function buildUploadFloorplanResponse(
     parseJobId,
     draftRevisionId,
     currentState:
-      uploadMode === "fixture_asset" ? "draft_ready" : "parse_pending",
+      uploadMode === "fixture_asset" ? "p1_session_required" : "parse_pending",
     userMessage:
       uploadMode === "fixture_asset"
-        ? "Fixture floorplan accepted and converted to an untrusted draft."
+        ? "Fixture floorplan accepted as an untrusted draft; start P1 review before confirmation."
         : "File placeholder accepted; parse job remains mocked and pending.",
     nextAction: {
       actionId: "open_p1_session",

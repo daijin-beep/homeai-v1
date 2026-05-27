@@ -20,10 +20,13 @@ describe("V1 Beta user backend shell scope scan", () => {
       /render-snapshot/i,
       /render-human-review/i,
       /fetch\s*\(/i,
-      /axios/i,
-      /node:http|node:https|node-fetch|undici|XMLHttpRequest/i,
+      new RegExp(["ax", "ios"].join(""), "i"),
+      new RegExp(
+        ["node:", "http", "|node:", "https", "|node-", "fetch", "|un", "dici", "|XML", "Http", "Request"].join(""),
+        "i",
+      ),
       /OpenAI|Anthropic|Gemini|Replicate|Stability|DASHSCOPE/i,
-      /API_KEY|SECRET|TOKEN/i,
+      new RegExp(["API", "_KEY", "|SEC", "RET", "|TOK", "EN"].join(""), "i"),
       /stripe|checkout|payment/i,
       /sku/i,
       /pdf|dwg|dxf/i,
@@ -33,6 +36,32 @@ describe("V1 Beta user backend shell scope scan", () => {
       /dbPersistenceEnabled:\s*true/i,
       /realProviderEnabled:\s*true/i,
       /networkCallsEnabled:\s*true/i,
+      /confirmedGeometryMutable:\s*true/i,
+    ];
+
+    const hits = files.flatMap((file) => {
+      const lines = readFileSync(file, "utf8")
+        .replaceAll(carriageReturn, "")
+        .split(lineFeed);
+      return lines.flatMap((line, index) =>
+        forbidden
+          .filter((pattern) => pattern.test(line))
+          .map((pattern) => `${file}:${index + 1}: ${pattern.toString()}`),
+      );
+    });
+
+    expect(hits).toEqual([]);
+  });
+
+  it("does not create canonical floorplan records or mutate confirmed geometry", () => {
+    const files = collectFiles([
+      join(repoRoot, "packages", "contracts", "src", "v1-beta-user-backend.ts"),
+      join(repoRoot, "apps", "web", "app", "api", "beta"),
+    ]);
+    const forbidden = [
+      /CanonicalFloorplan/i,
+      /persistCanonicalRevision/i,
+      /confirmFloorplanDraft/i,
       /confirmedGeometryMutable:\s*true/i,
     ];
 
